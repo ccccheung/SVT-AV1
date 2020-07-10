@@ -33,7 +33,11 @@
 #include "EbCommonUtils.h"
 
 #if LOG_MV_VALIDITY
+#if CAP_MV_LENGTH
+void check_mv_validity(int16_t* x_mv, int16_t* y_mv, uint8_t need_shift);
+#else
 void check_mv_validity(int16_t x_mv, int16_t y_mv, uint8_t need_shift);
+#endif
 #endif
 #if !REMOVE_SQ_WEIGHT_QP_CHECK
 #if FIXED_SQ_WEIGHT_PER_QP
@@ -5286,14 +5290,23 @@ uint8_t check_spatial_mv_size(ModeDecisionContext *context_ptr, uint8_t list_idx
 
     // Iterate over all MVPs; if large, set high search_area_multiplier
     for (int8_t mvp_index = 0; mvp_index < context_ptr->mvp_count[list_idx][ref_idx]; mvp_index++) {
-        if (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] > 2048 || context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] > 2048 || *me_mv_x > 2048 || *me_mv_y > 2048) {
+        if (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] > HIGH_SPATIAL_MV_TH ||
+            context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] > HIGH_SPATIAL_MV_TH ||
+            *me_mv_x > HIGH_SPATIAL_MV_TH ||
+            *me_mv_y > HIGH_SPATIAL_MV_TH) {
             search_area_multiplier = MAX(3, search_area_multiplier);
             return search_area_multiplier; // reached MAX value already
         }
-        else if (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] > 512 || context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] > 512 || *me_mv_x > 512 || *me_mv_y > 512) {
+        else if (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] > MEDIUM_SPATIAL_MV_TH ||
+                 context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] > MEDIUM_SPATIAL_MV_TH ||
+                 *me_mv_x > MEDIUM_SPATIAL_MV_TH ||
+                 *me_mv_y > MEDIUM_SPATIAL_MV_TH) {
             search_area_multiplier = MAX(2, search_area_multiplier);
         }
-        else if (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] > 256 || context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] > 256 || *me_mv_x > 256 || *me_mv_y > 256) {
+        else if (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] > LOW_SPATIAL_MV_TH ||
+                 context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] > LOW_SPATIAL_MV_TH ||
+                 *me_mv_x > LOW_SPATIAL_MV_TH ||
+                 *me_mv_y > LOW_SPATIAL_MV_TH) {
             search_area_multiplier = MAX(1, search_area_multiplier);
         }
     }
@@ -5332,14 +5345,14 @@ uint8_t check_temporal_mv_size(PictureControlSet *pcs_ptr, ModeDecisionContext *
         for (int16_t w = start_colocated_area_x; w < end_colocated_area_x; w++) {
             MV_REF *mv = frame_mvs + w + (h * frame_mvs_stride);
             if (mv->ref_frame > INTRA_FRAME) {
-                if (ABS(mv->mv.as_mv.row) > 8192 || ABS(mv->mv.as_mv.col) > 8192) {
+                if (ABS(mv->mv.as_mv.row) > HIGH_TEMPORAL_MV_TH || ABS(mv->mv.as_mv.col) > HIGH_TEMPORAL_MV_TH) {
                     search_area_multiplier = MAX(3, search_area_multiplier);
                     return search_area_multiplier; // reached MAX value already
                 }
-                else if (ABS(mv->mv.as_mv.row) > 2048 || ABS(mv->mv.as_mv.col) > 2048) {
+                else if (ABS(mv->mv.as_mv.row) > MEDIUM_TEMPORAL_MV_TH || ABS(mv->mv.as_mv.col) > MEDIUM_TEMPORAL_MV_TH) {
                     search_area_multiplier = MAX(2, search_area_multiplier);
                 }
-                else if (ABS(mv->mv.as_mv.row) > 1024 || ABS(mv->mv.as_mv.col) > 1024) {
+                else if (ABS(mv->mv.as_mv.row) > LOW_TEMPORAL_MV_TH || ABS(mv->mv.as_mv.col) > LOW_TEMPORAL_MV_TH) {
                     search_area_multiplier = MAX(1, search_area_multiplier);
                 }
             }
@@ -5528,6 +5541,12 @@ void md_sq_motion_search(PictureControlSet *pcs_ptr, ModeDecisionContext *contex
             *me_mv_x = best_search_mvx;
             *me_mv_y = best_search_mvy;
         }
+        // Check that the resulting MV is within the AV1 limits
+#if CAP_MV_LENGTH
+        check_mv_validity(me_mv_x, me_mv_y, 0);
+#else
+        check_mv_validity(*me_mv_x, *me_mv_y, 0);
+#endif
     }
 }
 #endif
@@ -7241,8 +7260,12 @@ void    predictive_me_search(PictureControlSet *pcs_ptr, ModeDecisionContext *co
 
 #if LOG_MV_VALIDITY
                     //check if final MV is within AV1 limits
+#if CAP_MV_LENGTH
+                    check_mv_validity(&best_search_mvx, &best_search_mvy, 0);
+#else
                     check_mv_validity(best_search_mvx,
                         best_search_mvy, 0);
+#endif
 #endif
 
                     context_ptr->best_spatial_pred_mv[list_idx][ref_idx][0] = best_search_mvx;
