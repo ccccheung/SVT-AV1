@@ -5933,8 +5933,6 @@ void read_refine_me_mvs(PictureControlSet *pcs_ptr, ModeDecisionContext *context
                 }
 #if ADAPTIVE_ME_SEARCH
                 else if (context_ptr->md_sq_motion_search_ctrls.enabled) {
-                    // Read the MVPs to identify high-motion clips in md_sq_motion_search()
-                    read_mvps(pcs_ptr, context_ptr, input_picture_ptr);
                     md_sq_motion_search(pcs_ptr,
                         context_ptr,
                         input_picture_ptr,
