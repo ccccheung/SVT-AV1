@@ -6246,7 +6246,9 @@ void perform_md_reference_pruning(PictureControlSet *pcs_ptr, ModeDecisionContex
 
         if (rf[1] == NONE_FRAME) {
 
+#if !ADAPTIVE_ME_SEARCH
             MvReferenceFrame frame_type = rf[0];
+#endif
             uint8_t list_idx = get_list_idx(rf[0]);
             uint8_t ref_idx = get_ref_frame_idx(rf[0]);
 #if !ADAPTIVE_ME_SEARCH
@@ -6748,7 +6750,9 @@ void    predictive_me_search(PictureControlSet *pcs_ptr, ModeDecisionContext *co
         int8_t  mvp_count = 0;
 #endif
         if (rf[1] == NONE_FRAME) {
+#if !ADAPTIVE_ME_SEARCH
             MvReferenceFrame frame_type = rf[0];
+#endif
             uint8_t          list_idx   = get_list_idx(rf[0]);
             uint8_t          ref_idx    = get_ref_frame_idx(rf[0]);
 #if PRED_ME_REF_MASKING
