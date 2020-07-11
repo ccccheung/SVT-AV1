@@ -30,7 +30,11 @@ extern "C" {
 #define DEPTH_ONE_STEP 21
 #define DEPTH_TWO_STEP 5
 #define DEPTH_THREE_STEP 1
+#if ADAPTIVE_ME_SEARCH
+#define MAX_MVP_CANIDATES 4
+#else
 #define PRED_ME_MAX_MVP_CANIDATES 4
+#endif
 #define PRED_ME_DEVIATION_TH 50
 #define PRED_ME_FULL_PEL_REF_WINDOW_WIDTH_15 15
 #define PRED_ME_FULL_PEL_REF_WINDOW_HEIGHT_15 15
@@ -921,11 +925,8 @@ typedef struct ModeDecisionContext {
     EbPictureBufferDesc* temp_recon_ptr;
 #endif
 #if ADAPTIVE_ME_SEARCH
-    uint32_t mvp_distortion[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH][PRED_ME_MAX_MVP_CANIDATES];
-    uint32_t best_mvp_distortion[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
-
-    int16_t mvp_x_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH][PRED_ME_MAX_MVP_CANIDATES];
-    int16_t mvp_y_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH][PRED_ME_MAX_MVP_CANIDATES];
+    int16_t mvp_x_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH][MAX_MVP_CANIDATES];
+    int16_t mvp_y_array[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH][MAX_MVP_CANIDATES];
     int8_t  mvp_count[MAX_NUM_OF_REF_PIC_LIST][REF_LIST_MAX_DEPTH];
 
     int16_t sparse_search_level_0_start_x;

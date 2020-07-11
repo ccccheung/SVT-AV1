@@ -6233,11 +6233,11 @@ void perform_md_reference_pruning(PictureControlSet *pcs_ptr, ModeDecisionContex
 
     for (uint32_t ref_it = 0; ref_it < pcs_ptr->parent_pcs_ptr->tot_ref_frame_types; ++ref_it) {
         MvReferenceFrame ref_pair = pcs_ptr->parent_pcs_ptr->ref_frame_type_arr[ref_it];
-
+#if !ADAPTIVE_ME_SEARCH
         MacroBlockD *xd = context_ptr->blk_ptr->av1xd;
         uint8_t      drli, max_drl_index;
         IntMv        nearestmv[2], nearmv[2], ref_mv[2];
-
+#endif
         MvReferenceFrame rf[2];
         av1_set_ref_frame(rf, ref_pair);
 
@@ -6249,7 +6249,7 @@ void perform_md_reference_pruning(PictureControlSet *pcs_ptr, ModeDecisionContex
             MvReferenceFrame frame_type = rf[0];
             uint8_t list_idx = get_list_idx(rf[0]);
             uint8_t ref_idx = get_ref_frame_idx(rf[0]);
-
+#if !ADAPTIVE_ME_SEARCH
             // Evaluate MVP (if available)
             int16_t mvp_x_array[PRED_ME_MAX_MVP_CANIDATES];
             int16_t mvp_y_array[PRED_ME_MAX_MVP_CANIDATES];
@@ -6290,9 +6290,13 @@ void perform_md_reference_pruning(PictureControlSet *pcs_ptr, ModeDecisionContex
                     mvp_count++;
                 }
             }
+#endif
             // Step 1: derive the best MVP in term of distortion
-
+#if ADAPTIVE_ME_SEARCH
+            for (int8_t mvp_index = 0; mvp_index < context_ptr->mvp_count[list_idx][ref_idx]; mvp_index++) {
+#else
             for (int8_t mvp_index = 0; mvp_index < mvp_count; mvp_index++) {
+#endif
                 // MVP Distortion
                 EbReferenceObject *ref_obj =
                     pcs_ptr->ref_pic_ptr_array[list_idx][ref_idx]->object_ptr;
@@ -6301,17 +6305,31 @@ void perform_md_reference_pruning(PictureControlSet *pcs_ptr, ModeDecisionContex
 
 #if BOUNDARY_CHECK
                 // Skip the pred_me at the boundary
-                if (context_ptr->blk_origin_x + (mvp_x_array[mvp_index] >> 3) +
+#if ADAPTIVE_ME_SEARCH
+                if (context_ptr->blk_origin_x + (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] >> 3) +
                         context_ptr->blk_geom->bwidth >
                         ref_pic->max_width + ref_pic->origin_x ||
-                        context_ptr->blk_origin_y + (mvp_y_array[mvp_index] >> 3) +
+                        context_ptr->blk_origin_y + (context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] >> 3) +
                         context_ptr->blk_geom->bheight >
                         ref_pic->max_height + ref_pic->origin_y ||
                         context_ptr->blk_origin_x +
-                        (mvp_x_array[mvp_index] >> 3) < -ref_pic->origin_x ||
+                        (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] >> 3) < -ref_pic->origin_x ||
                         context_ptr->blk_origin_y +
-                        (mvp_y_array[mvp_index] >> 3) < -ref_pic->origin_y)
+                        (context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] >> 3) < -ref_pic->origin_y)
                     continue;
+#else
+                if (context_ptr->blk_origin_x + (mvp_x_array[mvp_index] >> 3) +
+                    context_ptr->blk_geom->bwidth >
+                    ref_pic->max_width + ref_pic->origin_x ||
+                    context_ptr->blk_origin_y + (mvp_y_array[mvp_index] >> 3) +
+                    context_ptr->blk_geom->bheight >
+                    ref_pic->max_height + ref_pic->origin_y ||
+                    context_ptr->blk_origin_x +
+                    (mvp_x_array[mvp_index] >> 3) < -ref_pic->origin_x ||
+                    context_ptr->blk_origin_y +
+                    (mvp_y_array[mvp_index] >> 3) < -ref_pic->origin_y)
+                    continue;
+#endif
 #endif
 #if INT_RECON_OFFSET_FIX
                 // Never be negative here
@@ -6320,8 +6338,13 @@ void perform_md_reference_pruning(PictureControlSet *pcs_ptr, ModeDecisionContex
                 uint32_t ref_origin_index =
 #endif
                     ref_pic->origin_x +
+#if ADAPTIVE_ME_SEARCH
+                    (context_ptr->blk_origin_x + (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] >> 3)) +
+                    (context_ptr->blk_origin_y + (context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] >> 3) +
+#else
                     (context_ptr->blk_origin_x + (mvp_x_array[mvp_index] >> 3)) +
                     (context_ptr->blk_origin_y + (mvp_y_array[mvp_index] >> 3) +
+#endif
                      ref_pic->origin_y) *
                         ref_pic->stride_y;
                 if (use_ssd) {
@@ -6608,25 +6631,9 @@ void perform_md_reference_pruning(PictureControlSet *pcs_ptr, ModeDecisionContex
 
 #if ADAPTIVE_ME_SEARCH
 /*
- * Read/store all MVPs for a block, and save the best distortion for each ref.
+ * Read/store all nearest/near MVs for a block for single ref case, and save the best distortion for each ref.
  */
-void read_mvps(PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr,
-    EbPictureBufferDesc *input_picture_ptr) {
-
-    // Distortion measure
-    EbBool use_ssd = EB_FALSE;
-
-    uint8_t hbd_mode_decision = context_ptr->hbd_mode_decision == EB_DUAL_BIT_MD
-        ? EB_8_BIT_MD
-        : context_ptr->hbd_mode_decision;
-
-    input_picture_ptr = hbd_mode_decision ? pcs_ptr->input_frame16bit
-        : pcs_ptr->parent_pcs_ptr->enhanced_picture_ptr;
-
-    // Update input origin
-    uint32_t input_origin_index =
-        (context_ptr->blk_origin_y + input_picture_ptr->origin_y) * input_picture_ptr->stride_y +
-        (context_ptr->blk_origin_x + input_picture_ptr->origin_x);
+void build_single_ref_mvp_array(PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr) {
 
     for (uint32_t ref_it = 0; ref_it < pcs_ptr->parent_pcs_ptr->tot_ref_frame_types; ++ref_it) {
         MvReferenceFrame ref_pair = pcs_ptr->parent_pcs_ptr->ref_frame_type_arr[ref_it];
@@ -6637,17 +6644,15 @@ void read_mvps(PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr,
 
         MvReferenceFrame rf[2];
         av1_set_ref_frame(rf, ref_pair);
-
-        uint32_t mvp_distortion;
-
+        // Single ref
         if (rf[1] == NONE_FRAME) {
 
             MvReferenceFrame frame_type = rf[0];
             uint8_t list_idx = get_list_idx(rf[0]);
             uint8_t ref_idx = get_ref_frame_idx(rf[0]);
 
-            // Evaluate MVP (if available)
             int8_t mvp_count = 0;
+
             //NEAREST
             context_ptr->mvp_x_array[list_idx][ref_idx][mvp_count] =
                 (context_ptr->md_local_blk_unit[context_ptr->blk_geom->blkidx_mds]
@@ -6685,87 +6690,6 @@ void read_mvps(PictureControlSet *pcs_ptr, ModeDecisionContext *context_ptr,
                 }
             }
             context_ptr->mvp_count[list_idx][ref_idx] = mvp_count;
-
-            // Step 1: derive the best MVP in terms of distortion
-            context_ptr->best_mvp_distortion[list_idx][ref_idx] = (int32_t)~0;
-            for (int8_t mvp_index = 0; mvp_index < mvp_count; mvp_index++) {
-                // MVP Distortion
-                context_ptr->mvp_distortion[list_idx][ref_idx][mvp_index] = (uint32_t)~0;
-
-                EbReferenceObject *ref_obj =
-                    pcs_ptr->ref_pic_ptr_array[list_idx][ref_idx]->object_ptr;
-                EbPictureBufferDesc *ref_pic = hbd_mode_decision ? ref_obj->reference_picture16bit
-                    : ref_obj->reference_picture;
-
-#if BOUNDARY_CHECK
-                // Skip the pred_me at the boundary
-                if (context_ptr->blk_origin_x + (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] >> 3) +
-                    context_ptr->blk_geom->bwidth >
-                    ref_pic->max_width + ref_pic->origin_x ||
-                    context_ptr->blk_origin_y + (context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] >> 3) +
-                    context_ptr->blk_geom->bheight >
-                    ref_pic->max_height + ref_pic->origin_y ||
-                    context_ptr->blk_origin_x +
-                    (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] >> 3) < -ref_pic->origin_x ||
-                    context_ptr->blk_origin_y +
-                    (context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] >> 3) < -ref_pic->origin_y)
-                    continue;
-#endif
-#if INT_RECON_OFFSET_FIX
-                // Never be negative here
-                int32_t ref_origin_index =
-#else
-                uint32_t ref_origin_index =
-#endif
-                    ref_pic->origin_x +
-                    (context_ptr->blk_origin_x + (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] >> 3)) +
-                    (context_ptr->blk_origin_y + (context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] >> 3) +
-                        ref_pic->origin_y) *
-                    ref_pic->stride_y;
-                if (use_ssd) {
-                    EbSpatialFullDistType spatial_full_dist_type_fun =
-                        hbd_mode_decision ? full_distortion_kernel16_bits
-                        : spatial_full_distortion_kernel;
-
-                    mvp_distortion =
-                        (uint32_t)spatial_full_dist_type_fun(input_picture_ptr->buffer_y,
-                            input_origin_index,
-                            input_picture_ptr->stride_y,
-                            ref_pic->buffer_y,
-                            ref_origin_index,
-                            ref_pic->stride_y,
-                            context_ptr->blk_geom->bwidth,
-                            context_ptr->blk_geom->bheight);
-                }
-                else {
-                    assert((context_ptr->blk_geom->bwidth >> 3) < 17);
-
-                    if (hbd_mode_decision) {
-                        mvp_distortion = sad_16b_kernel(
-                            ((uint16_t *)input_picture_ptr->buffer_y) + input_origin_index,
-                            input_picture_ptr->stride_y,
-                            ((uint16_t *)ref_pic->buffer_y) + ref_origin_index,
-                            ref_pic->stride_y,
-                            context_ptr->blk_geom->bheight,
-                            context_ptr->blk_geom->bwidth);
-                    }
-                    else {
-                        mvp_distortion = nxm_sad_kernel_sub_sampled(
-                            input_picture_ptr->buffer_y + input_origin_index,
-                            input_picture_ptr->stride_y,
-                            ref_pic->buffer_y + ref_origin_index,
-                            ref_pic->stride_y,
-                            context_ptr->blk_geom->bheight,
-                            context_ptr->blk_geom->bwidth);
-                    }
-                }
-
-                if (mvp_distortion < context_ptr->best_mvp_distortion[list_idx][ref_idx]) {
-                    context_ptr->best_mvp_distortion[list_idx][ref_idx] = mvp_distortion;
-                }
-
-                context_ptr->mvp_distortion[list_idx][ref_idx][mvp_index] = mvp_distortion;
-            }
         }
     }
 }
@@ -6802,11 +6726,11 @@ void    predictive_me_search(PictureControlSet *pcs_ptr, ModeDecisionContext *co
 
     for (uint32_t ref_it = 0; ref_it < pcs_ptr->parent_pcs_ptr->tot_ref_frame_types; ++ref_it) {
         MvReferenceFrame ref_pair = pcs_ptr->parent_pcs_ptr->ref_frame_type_arr[ref_it];
-
+#if !ADAPTIVE_ME_SEARCH
         MacroBlockD *xd = context_ptr->blk_ptr->av1xd;
         uint8_t      drli, max_drl_index;
         IntMv        nearestmv[2], nearmv[2], ref_mv[2];
-
+#endif
         MvReferenceFrame rf[2];
         av1_set_ref_frame(rf, ref_pair);
 
@@ -6817,11 +6741,12 @@ void    predictive_me_search(PictureControlSet *pcs_ptr, ModeDecisionContext *co
         int16_t  best_search_mvx        = (int16_t)~0;
         int16_t  best_search_mvy        = (int16_t)~0;
         uint32_t best_search_distortion = (int32_t)~0;
-
+#if !ADAPTIVE_ME_SEARCH
         // Step 0: derive the MVP list; 1 nearest and up to 3 near
         int16_t mvp_x_array[PRED_ME_MAX_MVP_CANIDATES];
         int16_t mvp_y_array[PRED_ME_MAX_MVP_CANIDATES];
         int8_t  mvp_count = 0;
+#endif
         if (rf[1] == NONE_FRAME) {
             MvReferenceFrame frame_type = rf[0];
             uint8_t          list_idx   = get_list_idx(rf[0]);
@@ -6918,6 +6843,7 @@ void    predictive_me_search(PictureControlSet *pcs_ptr, ModeDecisionContext *co
                 }
             }
             if (pa_me_distortion != 0 || context_ptr->predictive_me_level >= 5) {
+#if !ADAPTIVE_ME_SEARCH
                 //NEAREST
 #if CLEAN_UP_SB_DATA_0
                 mvp_x_array[mvp_count] =
@@ -6953,11 +6879,15 @@ void    predictive_me_search(PictureControlSet *pcs_ptr, ModeDecisionContext *co
                         mvp_count++;
                     }
                 }
+#endif
                 // Step 1: derive the best MVP in term of distortion
                 int16_t best_mvp_x = 0;
                 int16_t best_mvp_y = 0;
-
+#if ADAPTIVE_ME_SEARCH
+                for (int8_t mvp_index = 0; mvp_index < context_ptr->mvp_count[list_idx][ref_idx]; mvp_index++) {
+#else
                 for (int8_t mvp_index = 0; mvp_index < mvp_count; mvp_index++) {
+#endif
                     // MVP Distortion
                     EbReferenceObject *ref_obj =
                         pcs_ptr->ref_pic_ptr_array[list_idx][ref_idx]->object_ptr;
@@ -6967,17 +6897,31 @@ void    predictive_me_search(PictureControlSet *pcs_ptr, ModeDecisionContext *co
 
 #if BOUNDARY_CHECK
                     // Skip the pred_me at the boundary
-                    if (context_ptr->blk_origin_x + (mvp_x_array[mvp_index] >> 3) +
-                                context_ptr->blk_geom->bwidth >
-                            ref_pic->max_width + ref_pic->origin_x ||
-                        context_ptr->blk_origin_y + (mvp_y_array[mvp_index] >> 3) +
-                                context_ptr->blk_geom->bheight >
-                            ref_pic->max_height + ref_pic->origin_y ||
+#if ADAPTIVE_ME_SEARCH
+                    if (context_ptr->blk_origin_x + (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] >> 3) +
+                        context_ptr->blk_geom->bwidth >
+                        ref_pic->max_width + ref_pic->origin_x ||
+                        context_ptr->blk_origin_y + (context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] >> 3) +
+                        context_ptr->blk_geom->bheight >
+                        ref_pic->max_height + ref_pic->origin_y ||
                         context_ptr->blk_origin_x +
-                            (mvp_x_array[mvp_index] >> 3) < -ref_pic->origin_x ||
+                        (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] >> 3) < -ref_pic->origin_x ||
                         context_ptr->blk_origin_y +
-                            (mvp_y_array[mvp_index] >> 3) < -ref_pic->origin_y)
+                        (context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] >> 3) < -ref_pic->origin_y)
                         continue;
+#else
+                    if (context_ptr->blk_origin_x + (mvp_x_array[mvp_index] >> 3) +
+                        context_ptr->blk_geom->bwidth >
+                        ref_pic->max_width + ref_pic->origin_x ||
+                        context_ptr->blk_origin_y + (mvp_y_array[mvp_index] >> 3) +
+                        context_ptr->blk_geom->bheight >
+                        ref_pic->max_height + ref_pic->origin_y ||
+                        context_ptr->blk_origin_x +
+                        (mvp_x_array[mvp_index] >> 3) < -ref_pic->origin_x ||
+                        context_ptr->blk_origin_y +
+                        (mvp_y_array[mvp_index] >> 3) < -ref_pic->origin_y)
+                        continue;
+#endif
 #endif
 #if INT_RECON_OFFSET_FIX
                     int32_t ref_origin_index =
@@ -6985,8 +6929,13 @@ void    predictive_me_search(PictureControlSet *pcs_ptr, ModeDecisionContext *co
                     uint32_t ref_origin_index =
 #endif
                         ref_pic->origin_x +
+#if ADAPTIVE_ME_SEARCH
+                        (context_ptr->blk_origin_x + (context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index] >> 3)) +
+                        (context_ptr->blk_origin_y + (context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index] >> 3) +
+#else
                         (context_ptr->blk_origin_x + (mvp_x_array[mvp_index] >> 3)) +
                         (context_ptr->blk_origin_y + (mvp_y_array[mvp_index] >> 3) +
+#endif
                          ref_pic->origin_y) *
                             ref_pic->stride_y;
                     if (use_ssd) {
@@ -7027,8 +6976,13 @@ void    predictive_me_search(PictureControlSet *pcs_ptr, ModeDecisionContext *co
 
                     if (mvp_distortion < best_mvp_distortion) {
                         best_mvp_distortion = mvp_distortion;
+#if ADAPTIVE_ME_SEARCH
+                        best_mvp_x = context_ptr->mvp_x_array[list_idx][ref_idx][mvp_index];
+                        best_mvp_y = context_ptr->mvp_y_array[list_idx][ref_idx][mvp_index];
+#else
                         best_mvp_x          = mvp_x_array[mvp_index];
                         best_mvp_y          = mvp_y_array[mvp_index];
+#endif
                     }
                 }
 
@@ -13582,9 +13536,10 @@ void md_encode_block(PictureControlSet *pcs_ptr,
         mvp_bypass_init(pcs_ptr, context_ptr);
     }
 #if ADAPTIVE_ME_SEARCH
-    // read MVPs for use in md_sq_motion_search()
-    if (pcs_ptr->slice_type != I_SLICE && context_ptr->md_sq_motion_search_ctrls.enabled)
-        read_mvps(pcs_ptr, context_ptr, input_picture_ptr);
+    // Read MVPs (rounded-up to the closest integer) for use in md_sq_motion_search() and/or predictive_me_search() and/or perform_md_reference_pruning()
+    if (pcs_ptr->slice_type != I_SLICE && 
+       (context_ptr->md_sq_motion_search_ctrls.enabled || context_ptr->predictive_me_level || context_ptr->ref_pruning_ctrls.inter_to_inter_pruning_enabled || context_ptr->ref_pruning_ctrls.intra_to_inter_pruning_enabled))
+        build_single_ref_mvp_array(pcs_ptr, context_ptr);
 #endif
     // Read and (if needed) perform 1/8 Pel ME MVs refinement
 #if ADD_MD_NSQ_SEARCH
