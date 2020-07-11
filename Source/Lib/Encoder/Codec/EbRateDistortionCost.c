@@ -91,19 +91,11 @@ int32_t eb_av1_mv_bit_cost(const MV *mv, const MV *ref, const int32_t *mvjcost, 
     // Both the MVs and the MV diffs should be within the allowable range for accessing the MV cost
     // infrastructure.
     MV temp_diff = { mv->row - ref->row, mv->col - ref->col };
-#if FIX_MV_DIFF_CAP
-    // Allowable MV diff is -2048 < mv_length < 2048 in full-pel resolution
-    // Capping is changed to exclude the range boundaries
-    temp_diff.row = MAX(temp_diff.row, MV_LOW + 1);
-    temp_diff.row = MIN(temp_diff.row, MV_UPP - 1);
-    temp_diff.col = MAX(temp_diff.col, MV_LOW + 1);
-    temp_diff.col = MIN(temp_diff.col, MV_UPP - 1);
-#else
+
     temp_diff.row = MAX(temp_diff.row, MV_LOW);
     temp_diff.row = MIN(temp_diff.row, MV_UPP);
     temp_diff.col = MAX(temp_diff.col, MV_LOW);
     temp_diff.col = MIN(temp_diff.col, MV_UPP);
-#endif
 
     const MV diff = temp_diff;
 #else

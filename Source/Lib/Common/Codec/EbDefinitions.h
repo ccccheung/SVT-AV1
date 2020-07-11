@@ -615,8 +615,6 @@ extern "C" {
 #define PALETTE_CLI         1 // CLI Support for Palette
 #define ADAPTIVE_ME_SEARCH  1 // Add algorithm to detect high motion frames and increase ME size for those frames
 #define FIX_TOP_N_SEARCH           1
-#define CAP_MV_LENGTH              1 // Restrict the max. MV length to be within the allowable range: fp -2048 < x < 2048
-#define FIX_MV_DIFF_CAP            1 // Fix the MV diff capping to exclude the boundary values
 #endif
 // END  SVT_02_TEMP /////////////////////////////////////////////////////////
 

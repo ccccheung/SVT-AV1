@@ -33,11 +33,7 @@
 #include "EbCommonUtils.h"
 
 #if LOG_MV_VALIDITY
-#if CAP_MV_LENGTH
-void check_mv_validity(int16_t* x_mv, int16_t* y_mv, uint8_t need_shift);
-#else
 void check_mv_validity(int16_t x_mv, int16_t y_mv, uint8_t need_shift);
-#endif
 #endif
 #if !REMOVE_SQ_WEIGHT_QP_CHECK
 #if FIXED_SQ_WEIGHT_PER_QP
@@ -5542,11 +5538,7 @@ void md_sq_motion_search(PictureControlSet *pcs_ptr, ModeDecisionContext *contex
             *me_mv_y = best_search_mvy;
         }
         // Check that the resulting MV is within the AV1 limits
-#if CAP_MV_LENGTH
-        check_mv_validity(me_mv_x, me_mv_y, 0);
-#else
         check_mv_validity(*me_mv_x, *me_mv_y, 0);
-#endif
     }
 }
 #endif
@@ -7260,12 +7252,8 @@ void    predictive_me_search(PictureControlSet *pcs_ptr, ModeDecisionContext *co
 
 #if LOG_MV_VALIDITY
                     //check if final MV is within AV1 limits
-#if CAP_MV_LENGTH
-                    check_mv_validity(&best_search_mvx, &best_search_mvy, 0);
-#else
                     check_mv_validity(best_search_mvx,
                         best_search_mvy, 0);
-#endif
 #endif
 
                     context_ptr->best_spatial_pred_mv[list_idx][ref_idx][0] = best_search_mvx;
