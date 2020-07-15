@@ -2042,8 +2042,14 @@ void product_full_loop(ModeDecisionCandidateBuffer *candidate_buffer,
                                 candidate_buffer,
                                 txb_1d_offset,
                                 0,
+#if !MD_FRAME_CONTEXT_MEM_OPT
                                 context_ptr->coeff_est_entropy_coder_ptr,
+#endif
+#if CAND_MEM_OPT
+                                context_ptr->residual_quant_coeff_ptr,
+#else
                                 candidate_buffer->residual_quant_coeff_ptr,
+#endif
                                 y_count_non_zero_coeffs[txb_itr],
                                 0,
                                 0,
@@ -2642,7 +2648,9 @@ void encode_pass_tx_search_hbd(
         // Set the Candidate Buffer
         candidate_buffer = candidate_buffer_ptr_array[0];
         // Rate estimation function uses the values from CandidatePtr. The right values are copied from blk_ptr to CandidatePtr
+#if !MD_FRAME_CONTEXT_MEM_OPT
         EntropyCoder *coeff_est_entropy_coder_ptr          = pcs_ptr->coeff_est_entropy_coder_ptr;
+#endif
         candidate_buffer->candidate_ptr->type              = blk_ptr->prediction_mode_flag;
         candidate_buffer->candidate_ptr->pred_mode         = blk_ptr->pred_mode;
         candidate_buffer->candidate_ptr->filter_intra_mode = blk_ptr->filter_intra_mode;
@@ -2656,7 +2664,9 @@ void encode_pass_tx_search_hbd(
             candidate_buffer,
             coeff1d_offset,
             0,
+#if !MD_FRAME_CONTEXT_MEM_OPT
             coeff_est_entropy_coder_ptr,
+#endif
             coeff_samples_sb,
             y_count_non_zero_coeffs_temp,
             0,
@@ -2804,6 +2814,18 @@ void full_loop_r(SuperBlock *sb_ptr, ModeDecisionCandidateBuffer *candidate_buff
                     &context_ptr->cr_dc_sign_context);
 
         // NADER - TU
+#if CAND_MEM_OPT
+        txb_origin_index =
+            txb_origin_x + txb_origin_y * context_ptr->residual_quant_coeff_ptr->stride_y;
+        tu_cb_origin_index = (((txb_origin_x >> 3) << 3) +
+            (((txb_origin_y >> 3) << 3) *
+                context_ptr->residual_quant_coeff_ptr->stride_cb)) >>
+            1;
+        tu_cr_origin_index = (((txb_origin_x >> 3) << 3) +
+            (((txb_origin_y >> 3) << 3) *
+                context_ptr->residual_quant_coeff_ptr->stride_cr)) >>
+            1;
+#else
         txb_origin_index =
             txb_origin_x + txb_origin_y * candidate_buffer->residual_quant_coeff_ptr->stride_y;
         tu_cb_origin_index = (((txb_origin_x >> 3) << 3) +
@@ -2814,6 +2836,7 @@ void full_loop_r(SuperBlock *sb_ptr, ModeDecisionCandidateBuffer *candidate_buff
                               (((txb_origin_y >> 3) << 3) *
                                candidate_buffer->residual_quant_coeff_ptr->stride_cr)) >>
                              1;
+#endif
 
         //    This function replaces the previous Intra Chroma mode if the LM fast
         //    cost is better.
@@ -3071,8 +3094,13 @@ void cu_full_distortion_fast_txb_mode_r(
             MIN(context_ptr->blk_geom->tx_height_uv[tx_depth][txb_itr],
                 pcs_ptr->parent_pcs_ptr->aligned_height / 2 -
                     ((context_ptr->sb_origin_y + ((txb_origin_y >> 3) << 3)) >> 1));
+#if CAND_MEM_OPT
+        txb_origin_index =
+            txb_origin_x + txb_origin_y * context_ptr->residual_quant_coeff_ptr->stride_y;
+#else
         txb_origin_index =
             txb_origin_x + txb_origin_y * candidate_buffer->residual_quant_coeff_ptr->stride_y;
+#endif
         txb_chroma_origin_index = txb_1d_offset;
         // Reset the Bit Costs
         y_txb_coeff_bits  = 0;
@@ -3096,7 +3124,11 @@ void cu_full_distortion_fast_txb_mode_r(
                 int32_t txb_uv_origin_index =
                     (((txb_origin_x >> 3) << 3) +
                      (((txb_origin_y >> 3) << 3) *
+#if CAND_MEM_OPT
+                      context_ptr->residual_quant_coeff_ptr->stride_cb)) >>
+#else
                       candidate_buffer->residual_quant_coeff_ptr->stride_cb)) >>
+#endif
                     1;
 
                 EbSpatialFullDistType spatial_full_dist_type_fun =
@@ -3189,8 +3221,14 @@ void cu_full_distortion_fast_txb_mode_r(
                                         candidate_buffer,
                                         txb_origin_index,
                                         txb_chroma_origin_index,
+#if !MD_FRAME_CONTEXT_MEM_OPT
                                         context_ptr->coeff_est_entropy_coder_ptr,
+#endif
+#if CAND_MEM_OPT
+                                        context_ptr->residual_quant_coeff_ptr,
+#else
                                         candidate_buffer->residual_quant_coeff_ptr,
+#endif
                                         count_non_zero_coeffs[0][current_txb_index],
                                         count_non_zero_coeffs[1][current_txb_index],
                                         count_non_zero_coeffs[2][current_txb_index],
