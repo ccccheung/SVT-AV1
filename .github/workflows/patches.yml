@@ -99,7 +99,7 @@ jobs:
           done
           tar xf video.tar.gz
       - name: Run ffmpeg
-        run: ffmpeg -i akiyo_cif.y4m -c:v libsvt_av1 akiyo.webm
+        run: ffmpeg -i akiyo_cif.y4m -c:v libsvtav1 akiyo.webm
 
   gstreamer-patch:
     runs-on: ubuntu-18.04
