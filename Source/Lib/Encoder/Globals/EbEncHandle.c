@@ -2381,8 +2381,13 @@ static EbErrorType verify_settings(
         SVT_LOG("Error instance %u: Hierarchical Levels supported [3-5]\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
-    if (config->intra_period_length < -2 || config->intra_period_length > 2147483646) {
-        SVT_LOG("Error Instance %u: The intra period must be [-2, 2147483646]  \n", channel_number + 1);
+    if ((config->intra_period_length < -2 || config->intra_period_length > 2147483646) && config->rate_control_mode == 0) {
+        SVT_LOG("Error Instance %u: The intra period must be [-2, 2^32-2]  \n", channel_number + 1);
+        return_error = EB_ErrorBadParameter;
+    }
+
+    if ((config->intra_period_length < -2 || config->intra_period_length > 255) && config->rate_control_mode >=1) {
+        SVT_LOG("Error Instance %u: The intra period must be [-2, 255] for VBR \n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
 
