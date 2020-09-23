@@ -855,7 +855,7 @@ ConfigEntry config_entry_2p[] = {
 ConfigEntry config_entry_intra_refresh[] = {
     {SINGLE_INPUT,
      KEYINT_TOKEN,
-     "Intra period interval(frames) (-2: default intra period , -1: No intra update or [0 - 2^32-2])",
+     "Intra period interval(frames) (-2: default intra period , -1: No intra update or [0 - 2^31-2]; [-2-255] if RateControlMode >= 1)",
      set_cfg_intra_period},
     {SINGLE_INPUT,
      INTRA_REFRESH_TYPE_TOKEN,
@@ -1313,7 +1313,7 @@ ConfigEntry config_entry[] = {
     {SINGLE_INPUT, INPUT_DEPTH_TOKEN, "Bit depth for codec(8 or 10)", set_encoder_bit_depth},
     {SINGLE_INPUT,
      KEYINT_TOKEN,
-     "Intra period interval(frames) (-2: default intra period, -1: No intra update or [0 - 2^32-2])",
+     "Intra period interval(frames) (-2: default intra period, -1: No intra update or [0 - 2^31-2]; [-2 - 255] if RateControlMode>=1)",
      set_cfg_intra_period},
     {SINGLE_INPUT,
      LOOKAHEAD_NEW_TOKEN,
