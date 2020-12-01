@@ -672,6 +672,10 @@ static void setup_two_pass(SequenceControlSet *scs_ptr) {
             scs_ptr->twopass.stats_buf_ctx->stats_in_start =
                 encode_context_ptr->rc_twopass_stats_in.buf;
             scs_ptr->twopass.stats_in = scs_ptr->twopass.stats_buf_ctx->stats_in_start;
+#if FTR_VBR_MT_ST1
+            scs_ptr->twopass.stats_buf_ctx->stats_in_end_write =
+                &scs_ptr->twopass.stats_buf_ctx->stats_in_start[packets - 1];
+#endif
             scs_ptr->twopass.stats_buf_ctx->stats_in_end =
                 &scs_ptr->twopass.stats_buf_ctx->stats_in_start[packets - 1];
             svt_av1_init_second_pass(scs_ptr);

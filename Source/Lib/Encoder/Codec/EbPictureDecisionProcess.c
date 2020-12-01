@@ -4039,6 +4039,16 @@ void send_picture_out(
             }
         }
     }
+#if FTR_VBR_MT_ST1
+    if (scs->lap_enabled || use_input_stat(scs)) {
+        pcs->stats_in_offset = pcs->decode_order;
+        if (scs->lap_enabled)
+            pcs->stats_in_end_offset = MIN((uint64_t)(scs->twopass.stats_buf_ctx->stats_in_end_write - scs->twopass.stats_buf_ctx->stats_in_start), pcs->stats_in_offset + 21);//anaghdin to create a function and replace 21
+        else
+            // for use_input_stat(scs)
+            pcs->stats_in_end_offset = (uint64_t)(scs->twopass.stats_buf_ctx->stats_in_end_write - scs->twopass.stats_buf_ctx->stats_in_start);
+    }
+#endif
     //get a new ME data buffer
     if (pcs->me_data_wrapper_ptr == NULL) {
         svt_get_empty_object(ctx->me_fifo_ptr, &me_wrapper);

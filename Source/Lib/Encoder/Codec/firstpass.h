@@ -199,6 +199,10 @@ typedef struct {
 
 typedef struct {
     FIRSTPASS_STATS *stats_in_start;
+#if FTR_VBR_MT_ST1
+    // used when writing the stat.i.e in the first pass
+    FIRSTPASS_STATS *stats_in_end_write;
+#endif
     FIRSTPASS_STATS *stats_in_end;
     FIRSTPASS_STATS *stats_in_buf_end;
     FIRSTPASS_STATS *total_stats;

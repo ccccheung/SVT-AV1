@@ -7164,7 +7164,30 @@ void recode_loop_update_q(PictureParentControlSet *ppcs_ptr, int *const loop, in
                         *q);
     *loop = (*q != last_q);
 }
+#if FTR_VBR_MT_ST1
+// Populate the required parameter in rc structure from other structures
+void static restore_rc_param(RateControlContext *context_ptr, PictureParentControlSet *ppcs_ptr) {
+}
+// Populate the required parameter in two_pass structure from other structures
+void static restore_two_pass_param(RateControlContext *context_ptr, PictureParentControlSet *ppcs_ptr) {
+    SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
+    TWO_PASS *const twopass = &scs_ptr->twopass;
 
+    twopass->stats_in = scs_ptr->twopass.stats_buf_ctx->stats_in_start + ppcs_ptr->stats_in_offset;
+      twopass->stats_buf_ctx->stats_in_end = scs_ptr->twopass.stats_buf_ctx->stats_in_start + ppcs_ptr->stats_in_end_offset;
+}
+
+// Populate the required parameter in gf_group structure from other structures
+void static restore_gf_group_param(RateControlContext *context_ptr, PictureParentControlSet *ppcs_ptr) {
+}
+
+// Populate the required parameter in rc, twopass and gf_group structures from other structures
+void static restore_param(RateControlContext *context_ptr, PictureParentControlSet *ppcs_ptr) {
+    restore_rc_param(context_ptr, ppcs_ptr);
+    restore_two_pass_param(context_ptr, ppcs_ptr);
+    restore_gf_group_param(context_ptr, ppcs_ptr);
+}
+#endif
 void *rate_control_kernel(void *input_ptr) {
     // Context
     EbThreadContext *   thread_context_ptr = (EbThreadContext *)input_ptr;
@@ -7253,6 +7276,9 @@ void *rate_control_kernel(void *input_ptr) {
                     set_rc_buffer_sizes(scs_ptr);
                     av1_rc_init(scs_ptr);
                 }
+#if FTR_VBR_MT_ST1
+                restore_param(context_ptr, pcs_ptr->parent_pcs_ptr);
+#endif
                 svt_av1_get_second_pass_params(pcs_ptr->parent_pcs_ptr);
                 av1_configure_buffer_updates(pcs_ptr, &(pcs_ptr->parent_pcs_ptr->refresh_frame), 0);
                 av1_set_target_rate(pcs_ptr,

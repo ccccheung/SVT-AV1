@@ -892,7 +892,11 @@ typedef struct PictureParentControlSet {
     uint8_t    is_next_frame_intra;
     TfControls tf_ctrls;
     GmControls gm_ctrls;
+#if FTR_VBR_MT_ST1
+    // RC related variables
+#else
     // Loop variables
+#endif
     int                             q_low;
     int                             q_high;
     int                             loop_count;
@@ -909,6 +913,16 @@ typedef struct PictureParentControlSet {
     struct PictureParentControlSet *first_pass_ref_ppcs_ptr[2];
     uint8_t                         first_pass_ref_count;
     uint8_t                         first_pass_done;
+#if FTR_VBR_MT_ST1
+    // the offsets for STATS_BUFFER_CTX
+  //  uint64_t                        stats_in_start_offset;
+    uint64_t                        stats_in_end_offset;
+  //  uint64_t                        stats_in_buf_end_offset;
+  //  uint64_t                        total_stats_offset;
+  //  uint64_t                        total_left_stats_offset;
+    // the offsets for stats_in
+    uint64_t                        stats_in_offset;
+#endif
 } PictureParentControlSet;
 
 typedef struct PictureControlSetInitData {

@@ -37,7 +37,11 @@ extern "C" {
 #ifndef NON_AVX512_SUPPORT
 #define NON_AVX512_SUPPORT
 #endif
-
+#define FTR_VBR_MT              1
+#if FTR_VBR_MT
+#define FTR_VBR_MT_ST1          1 // storing the stat ptrs
+#define FTR_VBR_MT_LOG          1
+#endif
 //FOR DEBUGGING - Do not remove
 #define NO_ENCDEC               0 // bypass encDec to test cmpliance of MD. complained achieved when skip_flag is OFF. Port sample code from VCI-SW_AV1_Candidate1 branch
 #define DEBUG_TPL               0 // Prints to debug TPL
