@@ -861,7 +861,11 @@ void *picture_manager_kernel(void *input_ptr) {
 
                     availability_flag = EB_TRUE;
                     if (entry_pcs_ptr->decode_order != decode_order &&
-                    (scs_ptr->enable_dec_order || use_input_stat(scs_ptr) || scs_ptr->lap_enabled ))
+#if FTR_VBR_MT_REMOVE_DEC_ORDER
+                        (scs_ptr->enable_dec_order ))
+#else
+                        (scs_ptr->enable_dec_order || use_input_stat(scs_ptr) || scs_ptr->lap_enabled))
+#endif
                         availability_flag = EB_FALSE;
 
                     //pic mgr starts pictures in dec order (no need to wait for feedback)

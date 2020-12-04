@@ -97,7 +97,9 @@ typedef struct {
     double rate_correction_factors[RATE_FACTOR_LEVELS];
 
     int frames_since_golden;
+#if !FTR_VBR_MT_ST3
     int frames_till_gf_update_due;
+#endif
     int min_gf_interval;
     int max_gf_interval;
     int static_scene_max_gf_interval;
@@ -200,8 +202,10 @@ typedef struct {
     int enable_scenecut_detection;
     int use_arf_in_this_kf_group;
     int next_is_fwd_key;
+#if !FTR_VBR_MT_ST3
     int top_index;
     int bottom_index;
+#endif
 } RATE_CONTROL;
 
 /**************************************

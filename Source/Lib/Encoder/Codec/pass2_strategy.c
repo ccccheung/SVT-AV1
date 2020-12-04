@@ -1334,9 +1334,9 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
       rc->arf_boost_factor = LAST_ALR_BOOST_FACTOR;
     }
   }
-
+#if !FTR_VBR_MT_ST3
   rc->frames_till_gf_update_due = rc->baseline_gf_interval;
-
+#endif
   // Reset the file position.
   reset_fpf_position(twopass, start_pos);
   if (scs_ptr->lap_enabled) {
@@ -1899,7 +1899,9 @@ static void find_next_key_frame(PictureParentControlSet *pcs_ptr, FIRSTPASS_STAT
     rc->source_alt_ref_active = 0;
 
     // KF is always a GF so clear frames till next gf counter.
+#if !FTR_VBR_MT_ST3
     rc->frames_till_gf_update_due = 0;
+#endif
     rc->frames_to_key = 1;
 
     const FIRSTPASS_STATS *const start_position = twopass->stats_in;
@@ -2203,7 +2205,7 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
       //  twopass->stats_buf_ctx->stats_in_end = scs_ptr->twopass.stats_buf_ctx->stats_in_start + pcs_ptr->stats_in_end_offset;
     }
 #endif
-#if FTR_VBR_MT_LOG
+#if 0//FTR_VBR_MT_LOG
     SVT_LOG(
         "enter get_second_pass_params: "
         "POC:%lld\tDCO:%lld\tstat_in:%.0f\tstats_in_start:%.0f\tstats_in_end:%.0f\tstats_in_buf_"
@@ -2236,8 +2238,12 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
   }
 
   // Keyframe and section processing.
-    if (rc->frames_to_key <= 0 || (frame_is_intra_only(pcs_ptr) && pcs_ptr->idr_flag)/*(frame_flags & FRAMEFLAGS_KEY)*/) {
+#if FTR_VBR_MT_ST2
+    if (frame_is_intra_only(pcs_ptr) && pcs_ptr->idr_flag) {
+#else
+  if (rc->frames_to_key <= 0 || (frame_is_intra_only(pcs_ptr) && pcs_ptr->idr_flag)/*(frame_flags & FRAMEFLAGS_KEY)*/) {
     assert(rc->frames_to_key >= -1);
+#endif
     FIRSTPASS_STATS this_frame_copy;
     this_frame_copy = this_frame;
     frame_params->frame_type = KEY_FRAME;
@@ -2281,11 +2287,21 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
   }
 
   // Define a new GF/ARF group. (Should always enter here for key frames).
+#if 0//FTR_VBR_MT_ST2
+  uint8_t is_new_gf_group = (pcs_ptr->slice_type == I_SLICE ||
+      (pcs_ptr->slice_type != I_SLICE &&
+      pcs_ptr->temporal_layer_index == 0 &&
+      pcs_ptr->child_pcs->ref_slice_type_array[0][0] != I_SLICE))
+      ? 1
+      : 0;
+  if (is_new_gf_group) {// anaghdin in complete mini gops and tpl group
+#else
   if (rc->frames_till_gf_update_due == 0) {
     assert(current_frame->frame_number == 0 ||
         pcs_ptr->gf_group_index == gf_group->size);
+#endif
     const FIRSTPASS_STATS *const start_position = twopass->stats_in;
-
+    printf("In1: poc:%d\n", pcs_ptr->picture_number);
     if (scs_ptr->lap_enabled && rc->enable_scenecut_detection) {
       int num_frames_to_detect_scenecut, frames_to_key;
       num_frames_to_detect_scenecut = MAX_GF_LENGTH_LAP + 1;
@@ -2303,17 +2319,27 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
             ? AOMMIN(MAX_GF_INTERVAL,
                      encode_context_ptr->gf_cfg.lag_in_frames - 7/*oxcf->arnr_max_frames*/ / 2)
             : MAX_GF_LENGTH_LAP;
-    if (rc->intervals_till_gf_calculate_due == 0)
-      impose_gf_length(pcs_ptr, MAX_NUM_GF_INTERVALS);
-
+#if 1//!FTR_VBR_MT_ST2
+    if (rc->intervals_till_gf_calculate_due == 0)//anaghdin: two pass gets in only once
+#endif
+    {
+        impose_gf_length(pcs_ptr, MAX_NUM_GF_INTERVALS);
+        printf("In2: poc:%d\n", pcs_ptr->picture_number);
+    }
     define_gf_group(pcs_ptr, &this_frame, frame_params, max_gop_length, 1);
+#if !FTR_VBR_MT_ST3
     rc->frames_till_gf_update_due = rc->baseline_gf_interval;
+#endif
     assert(pcs_ptr->gf_group_index == 0);
     // This is added for the first frame in minigop when it is not KEY_FRAME
     if (pcs_ptr->frm_hdr.frame_type != KEY_FRAME) {
         gf_group->index++;
         pcs_ptr->gf_group_index = gf_group->index;
     }
+#if FTR_VBR_MT_ST2
+    setup_target_rate(pcs_ptr);
+#endif
+#if !FTR_VBR_MT_ST3
 #if ARF_STATS_OUTPUT
     {
       FILE *fpfile;
@@ -2327,10 +2353,12 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
       fclose(fpfile);
     }
 #endif
+#endif
   }
   assert(pcs_ptr->gf_group_index < gf_group->size);
-
+#if 1//!FTR_VBR_MT_ST2
   setup_target_rate(pcs_ptr);
+#endif
 }
 
 // from aom ratectrl.c

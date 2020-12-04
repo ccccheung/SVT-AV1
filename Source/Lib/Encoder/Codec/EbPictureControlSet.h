@@ -915,13 +915,34 @@ typedef struct PictureParentControlSet {
     uint8_t                         first_pass_done;
 #if FTR_VBR_MT_ST1
     // the offsets for STATS_BUFFER_CTX
-  //  uint64_t                        stats_in_start_offset;
     uint64_t                        stats_in_end_offset;
-  //  uint64_t                        stats_in_buf_end_offset;
-  //  uint64_t                        total_stats_offset;
-  //  uint64_t                        total_left_stats_offset;
     // the offsets for stats_in
     uint64_t                        stats_in_offset;
+#endif
+#if FTR_VBR_MT_ST2
+    //GF_GROUP parameters store in PCS
+    int                             update_type;
+    int                             layer_depth;
+    int                             arf_boost;
+    int                             bit_allocation; // anaghdin use base_frame_target instead
+#endif
+#if FTR_VBR_MT_ST3
+    //RATE_CONTROL parameters store in PCS
+    int                             base_frame_target; // A baseline frame target before adjustment. anaghdin to removed the one in rc and use the one in ppcs
+    int                             this_frame_target; // Actual frame target after rc adjustment. anaghdin to removed the one in rc and use the one in ppcs
+    int                             projected_frame_size;//anaghdin no need to store, used locally. to be moved to ppcs
+
+    int                             frames_to_key;
+    int                             frames_since_key;
+    int                             is_src_frame_alt_ref;
+
+    // Total number of stats used only for gfu_boost calculation.
+    int                             num_stats_used_for_gfu_boost;
+    // Total number of stats required by gfu_boost calculation.
+    int                             num_stats_required_for_gfu_boost;
+    int                             top_index;
+    int                             bottom_index;
+
 #endif
 } PictureParentControlSet;
 

@@ -178,21 +178,21 @@ enum {
 
 typedef struct {
     unsigned char             index;
-    /*frame_update_type*/ int update_type[MAX_STATIC_GF_GROUP_LENGTH];
-    unsigned char             arf_src_offset[MAX_STATIC_GF_GROUP_LENGTH];
+    /*frame_update_type*/ int update_type[MAX_STATIC_GF_GROUP_LENGTH];//anaghdin replace with the one in PCS for all in EbRateControlProcess (except store_gf_group_param()) and in frame_is_kf_gf_arf(
+    unsigned char             arf_src_offset[MAX_STATIC_GF_GROUP_LENGTH];//anaghdin to remove
     // The number of frames displayed so far within the GOP at a given coding
     // frame.
-    unsigned char cur_frame_idx[MAX_STATIC_GF_GROUP_LENGTH];
+    unsigned char cur_frame_idx[MAX_STATIC_GF_GROUP_LENGTH];//anaghdin to remove
     unsigned char frame_disp_idx[MAX_STATIC_GF_GROUP_LENGTH];
 
     // TODO(jingning): Unify the data structure used here after the new control
     // mechanism is in place.
-    int layer_depth[MAX_STATIC_GF_GROUP_LENGTH];
+    int layer_depth[MAX_STATIC_GF_GROUP_LENGTH];//anaghdin replace with the one in PCS for all in EbRateControlProcess (except store_gf_group_param()) and in svt_av1_twopass_postencode_update(
     int arf_boost[MAX_STATIC_GF_GROUP_LENGTH];
     int max_layer_depth;
     int max_layer_depth_allowed;
     // This is currently only populated for AOM_Q mode
-    unsigned char q_val[MAX_STATIC_GF_GROUP_LENGTH];
+    unsigned char q_val[MAX_STATIC_GF_GROUP_LENGTH]; //anaghdin to remove
     int           bit_allocation[MAX_STATIC_GF_GROUP_LENGTH];
     int           size;
 } GF_GROUP;
