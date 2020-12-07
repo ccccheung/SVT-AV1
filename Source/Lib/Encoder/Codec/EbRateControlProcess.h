@@ -97,7 +97,7 @@ typedef struct {
     double rate_correction_factors[RATE_FACTOR_LEVELS];
 
     int frames_since_golden;
-#if !FTR_VBR_MT_ST3
+#if !FTR_VBR_MT_ST4
     int frames_till_gf_update_due;
 #endif
     int min_gf_interval;
@@ -184,11 +184,11 @@ typedef struct {
     int base_layer_qp;
 
     // number of determined gf group length left
-    int intervals_till_gf_calculate_due;
+    int intervals_till_gf_calculate_due; //anaghdin to remove under FTR_VBR_MT_ST4
     // stores gf group length intervals
-    int gf_intervals[MAX_NUM_GF_INTERVALS];
+    int gf_intervals[MAX_NUM_GF_INTERVALS]; //anaghdin to remove under FTR_VBR_MT_ST4 and changed to gf_interval
     // the current index in gf_intervals
-    int cur_gf_index;
+    int cur_gf_index; //anaghdin to remove under FTR_VBR_MT_ST4
 
     // gop bit budget
     int64_t gf_group_bits;

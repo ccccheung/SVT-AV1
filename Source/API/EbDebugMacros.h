@@ -41,9 +41,10 @@ extern "C" {
 #if FTR_VBR_MT
 #define FTR_VBR_MT_ST1          1 // Storing/Restoring the stat ptrs in PCS
 #define FTR_VBR_MT_ST2          1 // Storing/Restoring gf_group in PCS
-#define FTR_VBR_MT_ST3          0 // Storing/Restoring rate_control in PCS
+#define FTR_VBR_MT_ST3          1 // Storing/Restoring rate_control in PCS
+#define FTR_VBR_MT_ST4          1 // Replacing gf_interval calculation
 #define FTR_VBR_MT_REMOVE_DEC_ORDER 0 // Remove the decode order constraint
-#define FTR_VBR_MT_LOG          1
+#define FTR_VBR_MT_LOG          0
 #endif
 //FOR DEBUGGING - Do not remove
 #define NO_ENCDEC               0 // bypass encDec to test cmpliance of MD. complained achieved when skip_flag is OFF. Port sample code from VCI-SW_AV1_Candidate1 branch

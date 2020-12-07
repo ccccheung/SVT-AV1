@@ -944,6 +944,13 @@ typedef struct PictureParentControlSet {
     int                             bottom_index;
 
 #endif
+#if FTR_VBR_MT_ST4
+    // stores gf group (minigop) length
+    int                             gf_interval;
+    int                             gf_update_due; // thr gf update in RC is due for I, or base frames (except the one after I) or P frames
+    uint8_t                         is_new_gf_group;
+    struct PictureParentControlSet *gf_group[MAX_TPL_GROUP_SIZE];
+#endif
 } PictureParentControlSet;
 
 typedef struct PictureControlSetInitData {

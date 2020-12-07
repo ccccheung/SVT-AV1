@@ -4072,7 +4072,31 @@ void send_picture_out(
     }
 
 }
-
+#if FTR_VBR_MT_ST4
+// Store the pcs pointers in the gf group, set the gf_interval and gf_update_due
+void store_gf_group(
+    PictureParentControlSet *pcs,
+    PictureDecisionContext  *ctx,
+    uint32_t                 mg_size) {
+    if (pcs->slice_type == I_SLICE || (!is_delayed_intra(pcs) && pcs->temporal_layer_index == 0) || pcs->slice_type == P_SLICE) {
+        if (is_delayed_intra(pcs)) {
+            pcs->gf_group[0] = (void*)pcs;
+            EB_MEMCPY(&pcs->gf_group[1], ctx->mg_pictures_array, mg_size * sizeof(PictureParentControlSet*));
+            pcs->gf_interval = 1 + mg_size;
+        }
+        else {
+            EB_MEMCPY(&pcs->gf_group[0], ctx->mg_pictures_array, mg_size * sizeof(PictureParentControlSet*));
+            pcs->gf_interval = mg_size;
+        }
+        for (int pic_i = 0; pic_i < pcs->gf_interval; ++pic_i) {
+            if (pcs->gf_group[pic_i]->slice_type == I_SLICE || (!is_delayed_intra(pcs) && pcs->gf_group[pic_i]->temporal_layer_index == 0) || pcs->gf_group[pic_i]->slice_type == P_SLICE)
+                pcs->gf_group[pic_i]->gf_update_due = 1;
+            else
+                pcs->gf_group[pic_i]->gf_update_due = 0;
+        }
+    }
+}
+#endif
 void print_pre_ass(EncodeContext *ctxt)
 {
 
@@ -5554,7 +5578,22 @@ void* picture_decision_kernel(void *input_ptr)
                                 }
                             }
                         }
-
+#if FTR_VBR_MT_ST4
+                        //Process previous delayed Intra if we have one
+                        pcs_ptr->is_new_gf_group = 0;
+                        if (context_ptr->prev_delayed_intra) {
+                            pcs_ptr = context_ptr->prev_delayed_intra;
+                            store_gf_group(pcs_ptr, context_ptr, mg_size);
+                        }
+                        else {
+                            for (uint32_t pic_i = 0; pic_i < mg_size; ++pic_i) {
+                                pcs_ptr = context_ptr->mg_pictures_array_disp_order[pic_i];
+                                if (is_delayed_intra(pcs_ptr) == EB_FALSE) {
+                                    store_gf_group(pcs_ptr, context_ptr, mg_size);
+                                }
+                            }
+                        }
+#endif
                         //Process previous delayed Intra if we have one
                         if (context_ptr->prev_delayed_intra) {
                             pcs_ptr = context_ptr->prev_delayed_intra;
@@ -5568,7 +5607,6 @@ void* picture_decision_kernel(void *input_ptr)
                         //Do TF loop in display order
                         for (uint32_t pic_i = 0; pic_i < mg_size; ++pic_i) {
                             pcs_ptr = context_ptr->mg_pictures_array_disp_order[pic_i];
-
                             if (is_delayed_intra(pcs_ptr) == EB_FALSE) {
                                 if (scs_ptr->static_config.enable_tpl_la && pcs_ptr->temporal_layer_index == 0 )
                                     store_tpl_pictures(pcs_ptr, context_ptr, mg_size);

@@ -5999,7 +5999,7 @@ static void av1_rc_init(SequenceControlSet *scs_ptr) {
     rc->next_key_frame_forced  = 0;
     rc->source_alt_ref_pending = 0;
     rc->source_alt_ref_active  = 0;
-#if !FTR_VBR_MT_ST3
+#if !FTR_VBR_MT_ST4
     rc->frames_till_gf_update_due = 0;
 #endif
     rc->ni_av_qi                  = rc_cfg->worst_allowed_q;
@@ -6769,7 +6769,7 @@ void update_rc_counts(PictureParentControlSet *ppcs_ptr) {
         rc->frames_since_key++;
         rc->frames_to_key--;
     }
-#if !FTR_VBR_MT_ST3
+#if !FTR_VBR_MT_ST4
     //update_frames_till_gf_update(cpi);
     // TODO(weitinglin): Updating this counter for is_frame_droppable
     // is a work-around to handle the condition when a frame is drop.
@@ -6902,6 +6902,12 @@ static void av1_set_target_rate(PictureControlSet *pcs_ptr, int width, int heigh
     if (rc_cfg->mode == AOM_VBR || rc_cfg->mode == AOM_CQ)
         vbr_rate_correction(pcs_ptr, &target_rate);
     av1_rc_set_frame_target(pcs_ptr, target_rate, width, height);
+#if FTR_VBR_MT_LOG
+    SVT_LOG("POC:%lld\tbase_target:%d\ttarget:%d\n",
+        pcs_ptr->picture_number,
+        rc->base_frame_target,
+        target_rate);
+#endif
 }
 
 static double av1_get_compression_ratio(PictureParentControlSet *ppcs_ptr,
@@ -7219,7 +7225,7 @@ void static restore_param(PictureParentControlSet *ppcs_ptr) {
             ppcs_ptr->last_idr_picture + 1);
     }
     ppcs_ptr->frames_to_key = key_max - ppcs_ptr->frames_since_key;
-#if FTR_VBR_MT_LOG
+#if 0//FTR_VBR_MT_LOG
     SVT_LOG(
         "store_rc_param: "
         "POC:%lld\tkey_max:%d\tpps_frames_to_key:%d\trc_frames_to_key:%d\tpps_frames_since_key:%d\trc_frames_since_key:%d\n",
@@ -7248,7 +7254,15 @@ void static store_rc_param(PictureParentControlSet *ppcs_ptr) {
     ppcs_ptr->base_frame_target    = rc->base_frame_target;
     ppcs_ptr->this_frame_target    = rc->this_frame_target;
     ppcs_ptr->projected_frame_size = rc->projected_frame_size;
-
+#if FTR_VBR_MT_ST4
+    ppcs_ptr->is_src_frame_alt_ref = ppcs_ptr->is_overlay;
+    if (ppcs_ptr->is_new_gf_group) {
+        for (uint8_t frame_idx = 0; frame_idx < (int32_t)ppcs_ptr->gf_interval; frame_idx++) {
+            ppcs_ptr->gf_group[frame_idx]->num_stats_used_for_gfu_boost = rc->num_stats_used_for_gfu_boost;
+            ppcs_ptr->gf_group[frame_idx]->num_stats_required_for_gfu_boost = rc->num_stats_required_for_gfu_boost;
+        }
+    }
+#else
     // new GF group and bit allocation is done for: 1. I_Slice, 2: base layer which is not coming after an I
     uint8_t is_new_gf_group = (ppcs_ptr->slice_type == I_SLICE ||
         ppcs_ptr->slice_type != I_SLICE &&
@@ -7266,6 +7280,7 @@ void static store_rc_param(PictureParentControlSet *ppcs_ptr) {
             ppcs_ptr->tpl_group[frame_idx]->num_stats_required_for_gfu_boost = rc->num_stats_required_for_gfu_boost;
         }
     }
+#endif
 
 #endif
 }
@@ -7281,6 +7296,19 @@ void static store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
     SequenceControlSet *scs_ptr            = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
     GF_GROUP *const     gf_group           = &encode_context_ptr->gf_group;
+#if FTR_VBR_MT_ST4
+    if (ppcs_ptr->is_new_gf_group) {
+        for (uint8_t frame_idx = 0; frame_idx < (int32_t)ppcs_ptr->gf_interval; frame_idx++) {
+            uint8_t gf_group_index = ppcs_ptr->slice_type == I_SLICE ? frame_idx : frame_idx + 1;
+            ppcs_ptr->gf_group[frame_idx]->gf_group_index = gf_group_index;
+            ppcs_ptr->gf_group[frame_idx]->update_type    = gf_group->update_type[gf_group_index];
+            ppcs_ptr->gf_group[frame_idx]->layer_depth    = gf_group->layer_depth[gf_group_index];
+            ppcs_ptr->gf_group[frame_idx]->arf_boost      = gf_group->arf_boost[gf_group_index];
+            ppcs_ptr->gf_group[frame_idx]->bit_allocation =
+                gf_group->bit_allocation[gf_group_index];
+        }
+    }
+#else
     // new GF group and bit allocation is done for: 1. I_Slice, 2: base layer which is not coming after an I
     uint8_t is_new_gf_group = (ppcs_ptr->slice_type == I_SLICE ||
                                (ppcs_ptr->slice_type != I_SLICE &&
@@ -7301,6 +7329,7 @@ void static store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
                 gf_group->bit_allocation[gf_group_index];
         }
     }
+#endif
 }
 
 // Store the required parameters from rc, twopass and gf_group structures to other structures

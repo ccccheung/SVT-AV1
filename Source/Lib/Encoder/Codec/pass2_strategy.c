@@ -857,7 +857,7 @@ static INLINE int is_almost_static(double gf_zero_motion, int kf_zero_motion,
 #define RC_FACTOR_MAX 1.25
 #endif  // GROUP_ADAPTIVE_MAXQ
 #define MIN_FWD_KF_INTERVAL 8
-
+#if !FTR_VBR_MT_ST4
 // This function imposes the gf group length of future frames in batch based on the intra refresh
 // only supports for 5L
 static void impose_gf_length(PictureParentControlSet *pcs_ptr, int max_intervals) {
@@ -908,6 +908,7 @@ static void impose_gf_length(PictureParentControlSet *pcs_ptr, int max_intervals
     }
     rc->cur_gf_index = 0;
 }
+#endif
 static INLINE void set_baseline_gf_interval(PictureParentControlSet *pcs_ptr, int arf_position,
                                             int active_max_gf_interval,
                                             int use_alt_ref,
@@ -1334,7 +1335,7 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
       rc->arf_boost_factor = LAST_ALR_BOOST_FACTOR;
     }
   }
-#if !FTR_VBR_MT_ST3
+#if !FTR_VBR_MT_ST4
   rc->frames_till_gf_update_due = rc->baseline_gf_interval;
 #endif
   // Reset the file position.
@@ -1899,7 +1900,7 @@ static void find_next_key_frame(PictureParentControlSet *pcs_ptr, FIRSTPASS_STAT
     rc->source_alt_ref_active = 0;
 
     // KF is always a GF so clear frames till next gf counter.
-#if !FTR_VBR_MT_ST3
+#if !FTR_VBR_MT_ST4
     rc->frames_till_gf_update_due = 0;
 #endif
     rc->frames_to_key = 1;
@@ -2287,21 +2288,27 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
   }
 
   // Define a new GF/ARF group. (Should always enter here for key frames).
-#if 0//FTR_VBR_MT_ST2
-  uint8_t is_new_gf_group = (pcs_ptr->slice_type == I_SLICE ||
-      (pcs_ptr->slice_type != I_SLICE &&
-      pcs_ptr->temporal_layer_index == 0 &&
-      pcs_ptr->child_pcs->ref_slice_type_array[0][0] != I_SLICE))
-      ? 1
-      : 0;
-  if (is_new_gf_group) {// anaghdin in complete mini gops and tpl group
+#if FTR_VBR_MT_ST4
+  //anaghdin add to a function with description
+  pcs_ptr->is_new_gf_group = 0;
+  if (pcs_ptr->slice_type != P_SLICE)
+      pcs_ptr->is_new_gf_group = pcs_ptr->gf_update_due;
+  else {
+      for (int pic_i = 0; pic_i < pcs_ptr->gf_interval; ++pic_i)
+          if (pcs_ptr->gf_group[pic_i] && pcs_ptr->gf_group[pic_i]->slice_type == P_SLICE && pcs_ptr->gf_group[pic_i]->gf_update_due)
+              pcs_ptr->is_new_gf_group = 1;
+      if (pcs_ptr->is_new_gf_group)
+          for (int pic_i = 0; pic_i < pcs_ptr->gf_interval; ++pic_i)
+              if (pcs_ptr->gf_group[pic_i])
+                  pcs_ptr->gf_group[pic_i]->gf_update_due = 0;
+  }
+  if (pcs_ptr->is_new_gf_group) {// anaghdin in complete mini gops and tpl group
 #else
   if (rc->frames_till_gf_update_due == 0) {
     assert(current_frame->frame_number == 0 ||
         pcs_ptr->gf_group_index == gf_group->size);
 #endif
     const FIRSTPASS_STATS *const start_position = twopass->stats_in;
-    printf("In1: poc:%d\n", pcs_ptr->picture_number);
     if (scs_ptr->lap_enabled && rc->enable_scenecut_detection) {
       int num_frames_to_detect_scenecut, frames_to_key;
       num_frames_to_detect_scenecut = MAX_GF_LENGTH_LAP + 1;
@@ -2319,15 +2326,18 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
             ? AOMMIN(MAX_GF_INTERVAL,
                      encode_context_ptr->gf_cfg.lag_in_frames - 7/*oxcf->arnr_max_frames*/ / 2)
             : MAX_GF_LENGTH_LAP;
-#if 1//!FTR_VBR_MT_ST2
-    if (rc->intervals_till_gf_calculate_due == 0)//anaghdin: two pass gets in only once
-#endif
-    {
+#if FTR_VBR_MT_ST4
+    rc->cur_gf_index = 0;
+    rc->gf_intervals[rc->cur_gf_index] = (pcs_ptr->slice_type == I_SLICE) ? pcs_ptr->gf_interval : pcs_ptr->gf_interval + 1;
+#else
+    if (rc->intervals_till_gf_calculate_due == 0)
         impose_gf_length(pcs_ptr, MAX_NUM_GF_INTERVALS);
-        printf("In2: poc:%d\n", pcs_ptr->picture_number);
-    }
+#endif
+#if FTR_VBR_MT_LOG
+        SVT_LOG("In2: poc:%d\tGF_INT:%d\n", pcs_ptr->picture_number,  rc->gf_intervals[rc->cur_gf_index]);
+#endif
     define_gf_group(pcs_ptr, &this_frame, frame_params, max_gop_length, 1);
-#if !FTR_VBR_MT_ST3
+#if !FTR_VBR_MT_ST4
     rc->frames_till_gf_update_due = rc->baseline_gf_interval;
 #endif
     assert(pcs_ptr->gf_group_index == 0);
@@ -2339,7 +2349,7 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
 #if FTR_VBR_MT_ST2
     setup_target_rate(pcs_ptr);
 #endif
-#if !FTR_VBR_MT_ST3
+#if !FTR_VBR_MT_ST4
 #if ARF_STATS_OUTPUT
     {
       FILE *fpfile;
@@ -2356,7 +2366,7 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
 #endif
   }
   assert(pcs_ptr->gf_group_index < gf_group->size);
-#if 1//!FTR_VBR_MT_ST2
+#if !FTR_VBR_MT_ST4
   setup_target_rate(pcs_ptr);
 #endif
 }
