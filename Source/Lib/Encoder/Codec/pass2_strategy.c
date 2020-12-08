@@ -721,7 +721,16 @@ static int64_t calculate_total_gf_group_bits(PictureParentControlSet *pcs_ptr,
   // Clip based on user supplied data rate variability limit.
   if (total_group_bits > (int64_t)max_bits * rc->baseline_gf_interval)
     total_group_bits = (int64_t)max_bits * rc->baseline_gf_interval;
-
+#if FTR_VBR_MT_LOG
+  SVT_LOG("POC%lld\tkf_group_bits:%d\tgf_group_err:%.f\tkf_group_error_left:%d\ttotal_group_bits:%d\n", pcs_ptr->picture_number,
+      twopass->kf_group_bits,
+      gf_group_err,
+      twopass->kf_group_error_left,
+      total_group_bits);
+#endif
+#if FTR_VBR_MT_ST5
+  twopass->kf_group_bits = AOMMAX(twopass->kf_group_bits - total_group_bits, 0);
+#endif
   return total_group_bits;
 }
 
@@ -1995,6 +2004,9 @@ static void find_next_key_frame(PictureParentControlSet *pcs_ptr, FIRSTPASS_STAT
         twopass->kf_group_bits = 0;
     }
     twopass->kf_group_bits = AOMMAX(0, twopass->kf_group_bits);
+#if FTR_VBR_MT_ST5
+    twopass->bits_left = AOMMAX(twopass->bits_left - twopass->kf_group_bits, 0);
+#endif
     if (scs_ptr->lap_enabled) {
         // In the case of single pass based on LAP, frames to  key may have an
         // inaccurate value, and hence should be clipped to an appropriate
@@ -2062,6 +2074,14 @@ static void find_next_key_frame(PictureParentControlSet *pcs_ptr, FIRSTPASS_STAT
     kf_bits = calculate_boost_bits(
         AOMMIN(rc->frames_to_key, frames_to_key_clipped) - 1, rc->kf_boost,
         AOMMIN(twopass->kf_group_bits, kf_group_bits_clipped));
+
+#if FTR_VBR_MT_LOG
+    SVT_LOG("POC%lld\tkf_group_bits:%d\kf_bits:%d\tkf_boost:%d\tkf_zeromotion_pct:%d\n", pcs_ptr->picture_number,
+        twopass->kf_group_bits,
+        kf_bits,
+        rc->kf_boost,
+        twopass->kf_zeromotion_pct);
+#endif
     twopass->kf_group_bits -= kf_bits;
 
     // Save the bits to spend on the key frame.
@@ -2333,7 +2353,7 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
     if (rc->intervals_till_gf_calculate_due == 0)
         impose_gf_length(pcs_ptr, MAX_NUM_GF_INTERVALS);
 #endif
-#if FTR_VBR_MT_LOG
+#if 0//FTR_VBR_MT_LOG
         SVT_LOG("In2: poc:%d\tGF_INT:%d\n", pcs_ptr->picture_number,  rc->gf_intervals[rc->cur_gf_index]);
 #endif
     define_gf_group(pcs_ptr, &this_frame, frame_params, max_gop_length, 1);
@@ -2613,7 +2633,9 @@ void svt_av1_twopass_postencode_update(PictureParentControlSet *ppcs_ptr) {
   // is designed to prevent extreme behaviour at the end of a clip
   // or group of frames.
   rc->vbr_bits_off_target += rc->base_frame_target - rc->projected_frame_size;
+#if !FTR_VBR_MT_ST5
   twopass->bits_left = AOMMAX(twopass->bits_left - bits_used, 0);
+#endif
   // Target vs actual bits for this arf group.
   twopass->rolling_arf_group_target_bits += rc->this_frame_target;
   twopass->rolling_arf_group_actual_bits += rc->projected_frame_size;
@@ -2637,11 +2659,14 @@ void svt_av1_twopass_postencode_update(PictureParentControlSet *ppcs_ptr) {
   }
 
   if (ppcs_ptr->frm_hdr.frame_type != KEY_FRAME) {
+#if !FTR_VBR_MT_ST5
     twopass->kf_group_bits -= bits_used;
+#endif
     twopass->last_kfgroup_zeromotion_pct = twopass->kf_zeromotion_pct;
   }
+#if !FTR_VBR_MT_ST5
   twopass->kf_group_bits = AOMMAX(twopass->kf_group_bits, 0);
-
+#endif
   // If the rate control is drifting consider adjustment to min or maxq.
   if ((rc_cfg->mode != AOM_Q) && !rc->is_src_frame_alt_ref) {
     const int maxq_adj_limit = rc->worst_quality - rc->active_worst_quality;

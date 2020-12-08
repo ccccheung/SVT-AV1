@@ -1297,6 +1297,13 @@ typedef struct RateControlIntervalParamContext {
     EbBool   first_pic_actual_qp_assigned;
     EbBool   scene_change_in_gop;
     int64_t  extra_ap_bit_ratio_i;
+
+#if FTR_VBR_MT_ST6
+    // Projected total bits available for a key frame group of frames
+    int64_t kf_group_bits;
+    // Error score of frames still to be coded in kf group
+    int64_t kf_group_error_left;
+#endif
 } RateControlIntervalParamContext;
 
 typedef struct HighLevelRateControlContext {
@@ -7188,21 +7195,48 @@ void static restore_rc_param(PictureParentControlSet *ppcs_ptr) {
 #endif
 }
 // Populate the required parameters in two_pass structure from other structures
+#if FTR_VBR_MT_ST6
+void static restore_two_pass_param(PictureParentControlSet *        ppcs_ptr,
+                                   RateControlIntervalParamContext *rate_control_param_ptr) {
+#else
 void static restore_two_pass_param(PictureParentControlSet *ppcs_ptr) {
+#endif
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
-    TWO_PASS *const twopass = &scs_ptr->twopass;
+    TWO_PASS *const     twopass = &scs_ptr->twopass;
 
     twopass->stats_in = scs_ptr->twopass.stats_buf_ctx->stats_in_start + ppcs_ptr->stats_in_offset;
-      twopass->stats_buf_ctx->stats_in_end = scs_ptr->twopass.stats_buf_ctx->stats_in_start + ppcs_ptr->stats_in_end_offset;
+    twopass->stats_buf_ctx->stats_in_end = scs_ptr->twopass.stats_buf_ctx->stats_in_start +
+        ppcs_ptr->stats_in_end_offset;
+#if FTR_VBR_MT_ST6
+    twopass->kf_group_bits       = rate_control_param_ptr->kf_group_bits;
+    twopass->kf_group_error_left = rate_control_param_ptr->kf_group_error_left;
+#endif
 }
 
 // Populate the required parameters in gf_group structure from other structures
 void static restore_gf_group_param(PictureParentControlSet *ppcs_ptr) {
+
+#if FTR_VBR_MT_ST5
+    SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
+    EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
+    GF_GROUP *const     gf_group = &encode_context_ptr->gf_group;
+    gf_group->index = ppcs_ptr->gf_group_index;
+    gf_group->update_type[gf_group->index] = ppcs_ptr->update_type;
+    gf_group->layer_depth[gf_group->index] = ppcs_ptr->layer_depth;
+    gf_group->arf_boost[gf_group->index] = ppcs_ptr->arf_boost;
+
+#endif
 }
 
 // Populate the required parameters in rc, twopass and gf_group structures from other structures
+#if FTR_VBR_MT_ST6
+void static restore_param(PictureParentControlSet *ppcs_ptr,
+    RateControlIntervalParamContext *rate_control_param_ptr) {
+    restore_two_pass_param(ppcs_ptr, rate_control_param_ptr);
+#else
 void static restore_param(PictureParentControlSet *ppcs_ptr) {
     restore_two_pass_param(ppcs_ptr);
+#endif
 #if FTR_VBR_MT_ST3
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
@@ -7285,10 +7319,18 @@ void static store_rc_param(PictureParentControlSet *ppcs_ptr) {
 #endif
 }
 // Store the required parameters in two_pass structure from other structures
+#if FTR_VBR_MT_ST6
+void static store_two_pass_param(PictureParentControlSet *        ppcs_ptr,
+                                 RateControlIntervalParamContext *rate_control_param_ptr) {
+#else
 void static store_two_pass_param(PictureParentControlSet *ppcs_ptr) {
+#endif
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
-    TWO_PASS *const twopass = &scs_ptr->twopass;
-
+    TWO_PASS *const     twopass = &scs_ptr->twopass;
+#if FTR_VBR_MT_ST6
+    rate_control_param_ptr->kf_group_bits       = twopass->kf_group_bits;
+    rate_control_param_ptr->kf_group_error_left = twopass->kf_group_error_left;
+#endif
 }
 
 // Store the required parameters from gf_group structure to other structures
@@ -7333,9 +7375,18 @@ void static store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
 }
 
 // Store the required parameters from rc, twopass and gf_group structures to other structures
+#if FTR_VBR_MT_ST6
+void static store_param(PictureParentControlSet *ppcs_ptr,
+    RateControlIntervalParamContext *rate_control_param_ptr) {
+#else
 void static store_param(PictureParentControlSet *ppcs_ptr) {
+#endif
     store_rc_param(ppcs_ptr);
+#if FTR_VBR_MT_ST6
+    store_two_pass_param(ppcs_ptr, rate_control_param_ptr);
+#else
     store_two_pass_param(ppcs_ptr);
+#endif
     store_gf_group_param(ppcs_ptr);
 }
 #endif
@@ -7422,17 +7473,65 @@ void *rate_control_kernel(void *input_ptr) {
                     pcs_ptr->parent_pcs_ptr->sad_me +=
                         pcs_ptr->parent_pcs_ptr->rc_me_distortion[sb_addr];
                 }
+#if FTR_VBR_MT_ST6
+            // Frame level RC. Find the ParamPtr for the current GOP
+            if (scs_ptr->intra_period_length == -1 ||
+                scs_ptr->static_config.rate_control_mode == 0) {
+                rate_control_param_ptr = context_ptr->rate_control_param_queue[0];
+                prev_gop_rate_control_param_ptr = context_ptr->rate_control_param_queue[0];
+                next_gop_rate_control_param_ptr = context_ptr->rate_control_param_queue[0];
+            }
+            else {
+                uint32_t interval_index_temp = 0;
+                EbBool   interval_found = EB_FALSE;
+                while ((interval_index_temp < PARALLEL_GOP_MAX_NUMBER) && !interval_found) {
+                    if (pcs_ptr->picture_number >=
+                        context_ptr->rate_control_param_queue[interval_index_temp]->first_poc &&
+                        pcs_ptr->picture_number <=
+                        context_ptr->rate_control_param_queue[interval_index_temp]->last_poc) {
+                        interval_found = EB_TRUE;
+                    }
+                    else
+                        interval_index_temp++;
+                }
+                CHECK_REPORT_ERROR(interval_index_temp != PARALLEL_GOP_MAX_NUMBER,
+                    scs_ptr->encode_context_ptr->app_callback_ptr,
+                    EB_ENC_RC_ERROR2);
+
+                rate_control_param_ptr = context_ptr->rate_control_param_queue[interval_index_temp];
+
+                prev_gop_rate_control_param_ptr = (interval_index_temp == 0)
+                    ? context_ptr->rate_control_param_queue[PARALLEL_GOP_MAX_NUMBER - 1]
+                    : context_ptr->rate_control_param_queue[interval_index_temp - 1];
+                next_gop_rate_control_param_ptr = (interval_index_temp ==
+                    PARALLEL_GOP_MAX_NUMBER - 1)
+                    ? context_ptr->rate_control_param_queue[0]
+                    : context_ptr->rate_control_param_queue[interval_index_temp + 1];
+            }
+
+            rate_control_layer_ptr =
+                rate_control_param_ptr->rate_control_layer_array[pcs_ptr->temporal_layer_index];
+#endif
             if (use_input_stat(scs_ptr) || scs_ptr->lap_enabled) {
                 if (pcs_ptr->picture_number == 0) {
                     set_rc_buffer_sizes(scs_ptr);
                     av1_rc_init(scs_ptr);
                 }
 #if FTR_VBR_MT_ST1
+#if FTR_VBR_MT_ST6
+                restore_param(pcs_ptr->parent_pcs_ptr, rate_control_param_ptr);
+#else
                 restore_param(pcs_ptr->parent_pcs_ptr);
 #endif
+#endif
+               
                 svt_av1_get_second_pass_params(pcs_ptr->parent_pcs_ptr);
 #if FTR_VBR_MT_ST2
+#if FTR_VBR_MT_ST6
+                store_param(pcs_ptr->parent_pcs_ptr, rate_control_param_ptr);
+#else
                 store_param(pcs_ptr->parent_pcs_ptr);
+#endif
 #endif
                 av1_configure_buffer_updates(pcs_ptr, &(pcs_ptr->parent_pcs_ptr->refresh_frame), 0);
                 av1_set_target_rate(pcs_ptr,
@@ -7455,7 +7554,7 @@ void *rate_control_kernel(void *input_ptr) {
                                                      context_ptr,
                                                      context_ptr->high_level_rate_control_ptr);
             }
-
+#if !FTR_VBR_MT_ST6
             // Frame level RC. Find the ParamPtr for the current GOP
             if (scs_ptr->intra_period_length == -1 ||
                 scs_ptr->static_config.rate_control_mode == 0) {
@@ -7491,7 +7590,7 @@ void *rate_control_kernel(void *input_ptr) {
 
             rate_control_layer_ptr =
                 rate_control_param_ptr->rate_control_layer_array[pcs_ptr->temporal_layer_index];
-
+#endif
             if (scs_ptr->static_config.rate_control_mode == 0) {
                 // if RC mode is 0,  fixed QP is used
                 // QP scaling based on POC number for Flat IPPP structure
@@ -7723,6 +7822,10 @@ void *rate_control_kernel(void *input_ptr) {
                     ? context_ptr->rate_control_param_queue[PARALLEL_GOP_MAX_NUMBER - 1]
                     : context_ptr->rate_control_param_queue[interval_index_temp - 1];
             }
+#if FTR_VBR_MT_ST5
+            restore_gf_group_param(parentpicture_control_set_ptr);
+            restore_rc_param(parentpicture_control_set_ptr);
+#endif
             if (scs_ptr->static_config.rate_control_mode == 0) {
                 av1_rc_postencode_update(parentpicture_control_set_ptr,
                                          (parentpicture_control_set_ptr->total_num_bits + 7) >> 3);
