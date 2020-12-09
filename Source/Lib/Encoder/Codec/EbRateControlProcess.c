@@ -7186,7 +7186,7 @@ void recode_loop_update_q(PictureParentControlSet *ppcs_ptr, int *const loop, in
 }
 #if FTR_VBR_MT_ST1
 // Populate the required parameters in rc structure from other structures
-void static restore_rc_param(PictureParentControlSet *ppcs_ptr) {
+static void restore_rc_param(PictureParentControlSet *ppcs_ptr) {
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
     RATE_CONTROL *      rc = &encode_context_ptr->rc;
@@ -7197,7 +7197,7 @@ void static restore_rc_param(PictureParentControlSet *ppcs_ptr) {
 }
 // Populate the required parameters in two_pass structure from other structures
 #if FTR_VBR_MT_ST6
-void static restore_two_pass_param(PictureParentControlSet *        ppcs_ptr,
+static void restore_two_pass_param(PictureParentControlSet *        ppcs_ptr,
                                    RateControlIntervalParamContext *rate_control_param_ptr) {
 #else
 void static restore_two_pass_param(PictureParentControlSet *ppcs_ptr) {
@@ -7215,7 +7215,7 @@ void static restore_two_pass_param(PictureParentControlSet *ppcs_ptr) {
 }
 
 // Populate the required parameters in gf_group structure from other structures
-void static restore_gf_group_param(PictureParentControlSet *ppcs_ptr) {
+static void restore_gf_group_param(PictureParentControlSet *ppcs_ptr) {
 
 #if FTR_VBR_MT_ST5
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
@@ -7231,7 +7231,7 @@ void static restore_gf_group_param(PictureParentControlSet *ppcs_ptr) {
 
 // Populate the required parameters in rc, twopass and gf_group structures from other structures
 #if FTR_VBR_MT_ST6
-void static restore_param(PictureParentControlSet *ppcs_ptr,
+static void restore_param(PictureParentControlSet *ppcs_ptr,
     RateControlIntervalParamContext *rate_control_param_ptr) {
     restore_two_pass_param(ppcs_ptr, rate_control_param_ptr);
 #else
@@ -7241,26 +7241,28 @@ void static restore_param(PictureParentControlSet *ppcs_ptr) {
 #if FTR_VBR_MT_ST3
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
-    RATE_CONTROL *      rc = &encode_context_ptr->rc;
+
     const KeyFrameCfg *const kf_cfg = &encode_context_ptr->kf_cfg;
 
     ppcs_ptr->frames_since_key = (int)(ppcs_ptr->decode_order - ppcs_ptr->last_idr_picture);
     int key_max;
     if (scs_ptr->lap_enabled) {
         if (scs_ptr->static_config.hierarchical_levels != ppcs_ptr->hierarchical_levels)
-            key_max = (int)MIN(kf_cfg->key_freq_max,
-            (int64_t)((scs_ptr->twopass.stats_buf_ctx->stats_in_end - 1)->frame) -
-                ppcs_ptr->last_idr_picture + 1);
+            key_max = (int)MIN(
+                kf_cfg->key_freq_max,
+                (int)((int64_t)((scs_ptr->twopass.stats_buf_ctx->stats_in_end - 1)->frame) -
+                      ppcs_ptr->last_idr_picture + 1));
         else
             key_max = kf_cfg->key_freq_max;
-    }
-    else {
-        key_max = (int)MIN(kf_cfg->key_freq_max,
-            (int64_t)((scs_ptr->twopass.stats_buf_ctx->stats_in_end - 1)->frame) -
-            ppcs_ptr->last_idr_picture + 1);
+    } else {
+        key_max = (int)MIN(
+            kf_cfg->key_freq_max,
+            (int)((int64_t)((scs_ptr->twopass.stats_buf_ctx->stats_in_end - 1)->frame) -
+                  ppcs_ptr->last_idr_picture + 1));
     }
     ppcs_ptr->frames_to_key = key_max - ppcs_ptr->frames_since_key;
-#if 0//FTR_VBR_MT_LOG
+#if 0//FTR_VBR_MT_LOG 
+    RATE_CONTROL *      rc = &encode_context_ptr->rc;
     SVT_LOG(
         "store_rc_param: "
         "POC:%lld\tkey_max:%d\tpps_frames_to_key:%d\trc_frames_to_key:%d\tpps_frames_since_key:%d\trc_frames_since_key:%d\n",
@@ -7279,7 +7281,7 @@ void static restore_param(PictureParentControlSet *ppcs_ptr) {
 #endif
 #if FTR_VBR_MT_ST2
 // Store the required parameters from rc structure to other structures
-void static store_rc_param(PictureParentControlSet *ppcs_ptr) {
+static void store_rc_param(PictureParentControlSet *ppcs_ptr) {
 #if FTR_VBR_MT_ST3
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
@@ -7321,7 +7323,7 @@ void static store_rc_param(PictureParentControlSet *ppcs_ptr) {
 }
 // Store the required parameters in two_pass structure from other structures
 #if FTR_VBR_MT_ST6
-void static store_two_pass_param(PictureParentControlSet *        ppcs_ptr,
+static void store_two_pass_param(PictureParentControlSet *        ppcs_ptr,
                                  RateControlIntervalParamContext *rate_control_param_ptr) {
 #else
 void static store_two_pass_param(PictureParentControlSet *ppcs_ptr) {
@@ -7335,7 +7337,7 @@ void static store_two_pass_param(PictureParentControlSet *ppcs_ptr) {
 }
 
 // Store the required parameters from gf_group structure to other structures
-void static store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
+static void store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
     SequenceControlSet *scs_ptr            = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
     GF_GROUP *const     gf_group           = &encode_context_ptr->gf_group;
@@ -7377,7 +7379,7 @@ void static store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
 
 // Store the required parameters from rc, twopass and gf_group structures to other structures
 #if FTR_VBR_MT_ST6
-void static store_param(PictureParentControlSet *ppcs_ptr,
+static void store_param(PictureParentControlSet *ppcs_ptr,
     RateControlIntervalParamContext *rate_control_param_ptr) {
 #else
 void static store_param(PictureParentControlSet *ppcs_ptr) {
