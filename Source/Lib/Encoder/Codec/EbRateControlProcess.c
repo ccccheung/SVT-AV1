@@ -7525,7 +7525,7 @@ void *rate_control_kernel(void *input_ptr) {
                 restore_param(pcs_ptr->parent_pcs_ptr);
 #endif
 #endif
-               
+
                 svt_av1_get_second_pass_params(pcs_ptr->parent_pcs_ptr);
 
                 av1_configure_buffer_updates(pcs_ptr, &(pcs_ptr->parent_pcs_ptr->refresh_frame), 0);
