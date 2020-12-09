@@ -46,7 +46,7 @@ extern "C" {
 #define FTR_VBR_MT_ST5          1 // Restore values from PCS to RC, fix kf_group_bit
 #define FTR_VBR_MT_ST6          1 // Move kf_group_bit and kf_group_error_left to rate_control_param_ptr
 #define FTR_VBR_MT_REMOVE_DEC_ORDER 1 // Remove the decode order constraint
-#define FTR_VBR_MT_LOG          1
+#define FTR_VBR_MT_LOG          0
 #endif
 //FOR DEBUGGING - Do not remove
 #define NO_ENCDEC               0 // bypass encDec to test cmpliance of MD. complained achieved when skip_flag is OFF. Port sample code from VCI-SW_AV1_Candidate1 branch

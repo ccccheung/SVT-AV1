@@ -184,11 +184,11 @@ typedef struct {
     int base_layer_qp;
 
     // number of determined gf group length left
-    int intervals_till_gf_calculate_due; //anaghdin to remove under FTR_VBR_MT_ST4
+    int intervals_till_gf_calculate_due; //anaghdin to remove under FTR_VBR_MT_CL1
     // stores gf group length intervals
-    int gf_intervals[MAX_NUM_GF_INTERVALS]; //anaghdin to remove under FTR_VBR_MT_ST4 and changed to gf_interval
+    int gf_intervals[MAX_NUM_GF_INTERVALS]; //anaghdin to remove under FTR_VBR_MT_CL1 and changed to gf_interval
     // the current index in gf_intervals
-    int cur_gf_index; //anaghdin to remove under FTR_VBR_MT_ST4
+    int cur_gf_index; //anaghdin to remove under FTR_VBR_MT_CL1
 
     // gop bit budget
     int64_t gf_group_bits;
