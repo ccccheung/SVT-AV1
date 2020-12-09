@@ -2322,7 +2322,7 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
               if (pcs_ptr->gf_group[pic_i])
                   pcs_ptr->gf_group[pic_i]->gf_update_due = 0;
   }
-  if (pcs_ptr->is_new_gf_group) {// anaghdin in complete mini gops and tpl group
+  if (pcs_ptr->is_new_gf_group) {
 #else
   if (rc->frames_till_gf_update_due == 0) {
     assert(current_frame->frame_number == 0 ||

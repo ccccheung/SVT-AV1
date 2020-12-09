@@ -7191,7 +7191,8 @@ void static restore_rc_param(PictureParentControlSet *ppcs_ptr) {
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
     RATE_CONTROL *      rc = &encode_context_ptr->rc;
 #if FTR_VBR_MT_ST2
-    rc->base_frame_target  = ppcs_ptr->bit_allocation;
+    rc->base_frame_target = ppcs_ptr->bit_allocation;
+    rc->this_frame_target = ppcs_ptr->this_frame_target;
 #endif
 }
 // Populate the required parameters in two_pass structure from other structures
@@ -7526,6 +7527,11 @@ void *rate_control_kernel(void *input_ptr) {
 #endif
                
                 svt_av1_get_second_pass_params(pcs_ptr->parent_pcs_ptr);
+
+                av1_configure_buffer_updates(pcs_ptr, &(pcs_ptr->parent_pcs_ptr->refresh_frame), 0);
+                av1_set_target_rate(pcs_ptr,
+                                    pcs_ptr->parent_pcs_ptr->av1_cm->frm_size.frame_width,
+                                    pcs_ptr->parent_pcs_ptr->av1_cm->frm_size.frame_height);
 #if FTR_VBR_MT_ST2
 #if FTR_VBR_MT_ST6
                 store_param(pcs_ptr->parent_pcs_ptr, rate_control_param_ptr);
@@ -7533,10 +7539,6 @@ void *rate_control_kernel(void *input_ptr) {
                 store_param(pcs_ptr->parent_pcs_ptr);
 #endif
 #endif
-                av1_configure_buffer_updates(pcs_ptr, &(pcs_ptr->parent_pcs_ptr->refresh_frame), 0);
-                av1_set_target_rate(pcs_ptr,
-                                    pcs_ptr->parent_pcs_ptr->av1_cm->frm_size.frame_width,
-                                    pcs_ptr->parent_pcs_ptr->av1_cm->frm_size.frame_height);
             } else if (scs_ptr->static_config.rate_control_mode) {
                 pcs_ptr->parent_pcs_ptr->intra_selected_org_qp = 0;
                 // High level RC

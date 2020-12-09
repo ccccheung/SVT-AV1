@@ -4219,6 +4219,10 @@ static void recode_loop_decision_maker(PictureControlSet *pcs_ptr,
 #if FTR_VBR_MT_ST3
         ppcs_ptr->q_low = ppcs_ptr->bottom_index;
         ppcs_ptr->q_high = ppcs_ptr->top_index;
+#if FTR_VBR_MT_ST2
+        rc->base_frame_target = ppcs_ptr->bit_allocation;
+        rc->this_frame_target = ppcs_ptr->this_frame_target;
+#endif
 #else
         ppcs_ptr->q_low  = rc->bottom_index;
         ppcs_ptr->q_high = rc->top_index;

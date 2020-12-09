@@ -45,7 +45,7 @@ extern "C" {
 #define FTR_VBR_MT_ST4          1 // Replacing gf_interval calculation
 #define FTR_VBR_MT_ST5          1 // Restore values from PCS to RC, fix kf_group_bit
 #define FTR_VBR_MT_ST6          1 // Move kf_group_bit and kf_group_error_left to rate_control_param_ptr
-#define FTR_VBR_MT_REMOVE_DEC_ORDER 0 // Remove the decode order constraint
+#define FTR_VBR_MT_REMOVE_DEC_ORDER 1 // Remove the decode order constraint
 #define FTR_VBR_MT_LOG          1
 #endif
 //FOR DEBUGGING - Do not remove
