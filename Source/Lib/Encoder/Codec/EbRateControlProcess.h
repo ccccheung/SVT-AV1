@@ -183,12 +183,16 @@ typedef struct {
     int active_best_quality[MAX_ARF_LAYERS + 1];
     int base_layer_qp;
 
+#if FTR_VBR_MT_CL1
+    int gf_interval;
+#else
     // number of determined gf group length left
     int intervals_till_gf_calculate_due; //anaghdin to remove under FTR_VBR_MT_CL1
     // stores gf group length intervals
     int gf_intervals[MAX_NUM_GF_INTERVALS]; //anaghdin to remove under FTR_VBR_MT_CL1 and changed to gf_interval
     // the current index in gf_intervals
     int cur_gf_index; //anaghdin to remove under FTR_VBR_MT_CL1
+#endif
 
     // gop bit budget
     int64_t gf_group_bits;

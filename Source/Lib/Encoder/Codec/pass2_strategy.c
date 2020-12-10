@@ -920,8 +920,13 @@ static void impose_gf_length(PictureParentControlSet *pcs_ptr, int max_intervals
 #endif
 static INLINE void set_baseline_gf_interval(PictureParentControlSet *pcs_ptr, int arf_position,
                                             int active_max_gf_interval,
+#if FTR_VBR_MT_CL1
+                                            int use_alt_ref
+#else
                                             int use_alt_ref,
-                                            int is_final_pass) {
+                                            int is_final_pass
+#endif
+                                            ) {
   SequenceControlSet *scs_ptr = pcs_ptr->scs_ptr;
   EncodeContext *encode_context_ptr = scs_ptr->encode_context_ptr;
   RATE_CONTROL *const rc = &encode_context_ptr->rc;
@@ -944,12 +949,16 @@ static INLINE void set_baseline_gf_interval(PictureParentControlSet *pcs_ptr, in
       // if possible, merge the last two gf groups
       if (rc->frames_to_key <= active_max_gf_interval) {
         rc->baseline_gf_interval = rc->frames_to_key;
+#if !FTR_VBR_MT_CL1
         if (is_final_pass) rc->intervals_till_gf_calculate_due = 0;
+#endif
         // if merging the last two gf groups creates a group that is too long,
         // split them and force the last gf group to be the MIN_FWD_KF_INTERVAL
       } else {
         rc->baseline_gf_interval = rc->frames_to_key - MIN_FWD_KF_INTERVAL;
+#if !FTR_VBR_MT_CL1
         if (is_final_pass) rc->intervals_till_gf_calculate_due = 0;
+#endif
       }
     } else {
       rc->baseline_gf_interval = arf_position - rc->source_alt_ref_pending;
@@ -990,7 +999,11 @@ static void init_gf_stats(GF_GROUP_STATS *gf_stats) {
 static void set_multi_layer_params(const TWO_PASS *twopass,
     GF_GROUP *const gf_group, RATE_CONTROL *rc,
     FrameInfo *frame_info, int start, int end,
+#if FTR_VBR_MT_CL2
+    int *frame_ind,
+#else
     int *cur_frame_idx, int *frame_ind,
+#endif
     int layer_depth) {
     const int num_frames_to_process = end - start - 1;
     assert(num_frames_to_process >= 0);
@@ -1003,9 +1016,11 @@ static void set_multi_layer_params(const TWO_PASS *twopass,
         // Leaf nodes.
         while (++start < end) {
             gf_group->update_type[*frame_ind] = LF_UPDATE;
+#if !FTR_VBR_MT_CL2
             gf_group->arf_src_offset[*frame_ind] = 0;
             ++*cur_frame_idx;
             gf_group->cur_frame_idx[*frame_ind] = *cur_frame_idx;
+#endif
             gf_group->frame_disp_idx[*frame_ind] = start;
             gf_group->layer_depth[*frame_ind] = MAX_ARF_LAYERS;
             gf_group->arf_boost[*frame_ind] = av1_calc_arf_boost(
@@ -1020,8 +1035,10 @@ static void set_multi_layer_params(const TWO_PASS *twopass,
 
         // Internal ARF.
         gf_group->update_type[*frame_ind] = INTNL_ARF_UPDATE;
+#if !FTR_VBR_MT_CL2
         gf_group->arf_src_offset[*frame_ind] = m - start - 1;
         gf_group->cur_frame_idx[*frame_ind] = *cur_frame_idx;
+#endif
         gf_group->frame_disp_idx[*frame_ind] = m;
         gf_group->layer_depth[*frame_ind] = layer_depth;
 
@@ -1032,11 +1049,19 @@ static void set_multi_layer_params(const TWO_PASS *twopass,
 
         // Frames displayed before this internal ARF.
         set_multi_layer_params(twopass, gf_group, rc, frame_info, start, m,
+#if FTR_VBR_MT_CL2
+            frame_ind, layer_depth + 1);
+#else
             cur_frame_idx, frame_ind, layer_depth + 1);
+#endif
 
         // Frames displayed after this internal ARF.
         set_multi_layer_params(twopass, gf_group, rc, frame_info, m, end,
+#if FTR_VBR_MT_CL2
+            frame_ind, layer_depth + 1);
+#else
             cur_frame_idx, frame_ind, layer_depth + 1);
+#endif
     }
 }
 static int construct_multi_layer_gf_structure(
@@ -1045,7 +1070,9 @@ static int construct_multi_layer_gf_structure(
     int max_gf_interval,
     FRAME_UPDATE_TYPE first_frame_update_type) {
     int frame_index = 0;
+#if !FTR_VBR_MT_CL2
     int cur_frame_index = 0;
+#endif
 
     // Keyframe / Overlay frame / Golden frame.
     assert(gf_interval >= 1);
@@ -1054,9 +1081,11 @@ static int construct_multi_layer_gf_structure(
         first_frame_update_type == GF_UPDATE);
 
     gf_group->update_type[frame_index] = first_frame_update_type;
+#if !FTR_VBR_MT_CL2
     gf_group->arf_src_offset[frame_index] = 0;
     ++cur_frame_index;
     gf_group->cur_frame_idx[frame_index] = cur_frame_index;
+#endif
     gf_group->layer_depth[frame_index] =
         first_frame_update_type == OVERLAY_UPDATE ? MAX_ARF_LAYERS + 1 : 0;
     gf_group->max_layer_depth = 0;
@@ -1070,8 +1099,10 @@ static int construct_multi_layer_gf_structure(
         const int use_altref = gf_group->max_layer_depth_allowed > 0;
         if (use_altref) {
             gf_group->update_type[frame_index] = ARF_UPDATE;
+#if !FTR_VBR_MT_CL2
             gf_group->arf_src_offset[frame_index] = gf_interval - 1;
             gf_group->cur_frame_idx[frame_index] = cur_frame_index;
+#endif
             gf_group->frame_disp_idx[frame_index] = gf_interval;
             gf_group->layer_depth[frame_index] = 1;
             gf_group->arf_boost[frame_index] = rc->gfu_boost;
@@ -1080,7 +1111,11 @@ static int construct_multi_layer_gf_structure(
         }
         // Rest of the frames.
         set_multi_layer_params(twopass, gf_group, rc, frame_info, 0, gf_interval,
+#if FTR_VBR_MT_CL2
+            &frame_index, use_altref + 1);
+#else
             &cur_frame_index, &frame_index, use_altref + 1);
+#endif
     }
     else {
 
@@ -1089,8 +1124,10 @@ static int construct_multi_layer_gf_structure(
         //const int num_frames_to_process = end - start - 1;
         while (++start <= end) {
             gf_group->update_type[frame_index] = (frame_index % 2 == 0) ? INTNL_ARF_UPDATE : LF_UPDATE;
+#if !FTR_VBR_MT_CL2
             gf_group->arf_src_offset[frame_index] = 0;
             gf_group->cur_frame_idx[frame_index] = start;
+#endif
             gf_group->frame_disp_idx[frame_index] = start;
             gf_group->layer_depth[frame_index] = (frame_index % 4 == 0) ? 2 :
                 (frame_index % 2 == 0) ? 3 : MAX_ARF_LAYERS;
@@ -1145,14 +1182,21 @@ int frame_is_kf_gf_arf(PictureParentControlSet *ppcs_ptr);
  * \param[in]    this_frame      First pass statistics structure
  * \param[in]    frame_params    Structure with frame parameters
  * \param[in]    max_gop_length  Maximum length of the GF group
+#if !FTR_VBR_MT_CL1
  * \param[in]    is_final_pass   Whether this is the final pass for the
  *                               GF group, or a trial (non-zero)
+#endif
  *
  * \return Nothing is returned. Instead, encode_context_ptr->gf_group is changed.
  */
 static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *this_frame,
                             const EncodeFrameParams *const frame_params,
-                            int max_gop_length, int is_final_pass) {
+#if FTR_VBR_MT_CL1
+                            int max_gop_length
+#else
+                            int max_gop_length, int is_final_pass
+#endif
+                            ) {
   SequenceControlSet *scs_ptr = pcs_ptr->scs_ptr;
   EncodeContext *encode_context_ptr = scs_ptr->encode_context_ptr;
   RATE_CONTROL *const rc = &encode_context_ptr->rc;
@@ -1221,7 +1265,12 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
   else
       i = 1;
   // get the determined gf group length from rc->gf_intervals
-  while (i < rc->gf_intervals[rc->cur_gf_index]) {
+#if FTR_VBR_MT_CL1
+  while (i < rc->gf_interval)
+#else
+  while (i < rc->gf_intervals[rc->cur_gf_index])
+#endif
+  {
     int flash_detected;
     ++i;
     // Accumulate error score of frames in this gf group.
@@ -1244,10 +1293,12 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
     *this_frame = next_frame;
   }
 
+#if !FTR_VBR_MT_CL1
   if (is_final_pass) {
     rc->intervals_till_gf_calculate_due--;
     rc->cur_gf_index++;
   }
+#endif
 
   // Was the group length constrained by the requirement for a new KF?
   rc->constrained_gf_group = (i >= rc->frames_to_key) ? 1 : 0;
@@ -1298,8 +1349,12 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
     rc->source_alt_ref_pending = 1;
     gf_group->max_layer_depth_allowed = gf_cfg->gf_max_pyr_height;
     // Get from actual minigop size in PD
+#if FTR_VBR_MT_CL1
+    set_baseline_gf_interval(pcs_ptr, i, active_max_gf_interval, use_alt_ref);
+#else
     set_baseline_gf_interval(pcs_ptr, i, active_max_gf_interval, use_alt_ref,
                              is_final_pass);
+#endif
 
     const int forward_frames = (rc->frames_to_key - i >= i - 1)
                                    ? i - 1
@@ -1314,8 +1369,12 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
     reset_fpf_position(twopass, start_pos);
     rc->source_alt_ref_pending = 0;
     gf_group->max_layer_depth_allowed = 0;
+#if FTR_VBR_MT_CL1
+    set_baseline_gf_interval(pcs_ptr, i, active_max_gf_interval, use_alt_ref);
+#else
     set_baseline_gf_interval(pcs_ptr, i, active_max_gf_interval, use_alt_ref,
                              is_final_pass);
+#endif
 
     rc->gfu_boost = AOMMIN(
         MAX_GF_BOOST,
@@ -1330,10 +1389,16 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
   // the next gf group.
   // TODO(bohanli): should incorporate the usage of alt_ref into
   // calculate_gf_length
+#if FTR_VBR_MT_CL1
+  if (rc->source_alt_ref_pending == 0) {
+    rc->gf_interval--;
+  }
+#else
   if (is_final_pass && rc->source_alt_ref_pending == 0 &&
       rc->intervals_till_gf_calculate_due > 0) {
     rc->gf_intervals[rc->cur_gf_index]--;
   }
+#endif
 
 #define LAST_ALR_BOOST_FACTOR 0.2f
   rc->arf_boost_factor = 1.0;
@@ -1400,7 +1465,9 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
 #endif
 
   // Adjust KF group bits and error remaining.
+#if !FTR_VBR_MT_CL1
   if (is_final_pass)
+#endif
     twopass->kf_group_error_left -= (int64_t)gf_stats.gf_group_err;
   // Set up the structure of this Group-Of-Pictures (same as GF_GROUP)
   av1_gop_setup_structure(pcs_ptr, frame_params);
@@ -2347,16 +2414,28 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
                      encode_context_ptr->gf_cfg.lag_in_frames - 7/*oxcf->arnr_max_frames*/ / 2)
             : MAX_GF_LENGTH_LAP;
 #if FTR_VBR_MT_ST4
+#if FTR_VBR_MT_CL1
+    rc->gf_interval = (pcs_ptr->slice_type == I_SLICE) ? pcs_ptr->gf_interval : pcs_ptr->gf_interval + 1;
+#else
     rc->cur_gf_index = 0;
     rc->gf_intervals[rc->cur_gf_index] = (pcs_ptr->slice_type == I_SLICE) ? pcs_ptr->gf_interval : pcs_ptr->gf_interval + 1;
+#endif
 #else
     if (rc->intervals_till_gf_calculate_due == 0)
         impose_gf_length(pcs_ptr, MAX_NUM_GF_INTERVALS);
 #endif
 #if 0//FTR_VBR_MT_LOG
+#if FTR_VBR_MT_CL1
+        SVT_LOG("In2: poc:%d\tGF_INT:%d\n", pcs_ptr->picture_number,  rc->gf_interval);
+#else
         SVT_LOG("In2: poc:%d\tGF_INT:%d\n", pcs_ptr->picture_number,  rc->gf_intervals[rc->cur_gf_index]);
 #endif
+#endif
+#if FTR_VBR_MT_CL1
+    define_gf_group(pcs_ptr, &this_frame, frame_params, max_gop_length);
+#else
     define_gf_group(pcs_ptr, &this_frame, frame_params, max_gop_length, 1);
+#endif
 #if !FTR_VBR_MT_ST4
     rc->frames_till_gf_update_due = rc->baseline_gf_interval;
 #endif
@@ -2624,7 +2703,9 @@ void svt_av1_twopass_postencode_update(PictureParentControlSet *ppcs_ptr) {
   RATE_CONTROL *const rc = &encode_context_ptr->rc;
   TWO_PASS *const twopass = &scs_ptr->twopass;
   GF_GROUP *const gf_group = &encode_context_ptr->gf_group;
+#if !FTR_VBR_MT_ST5
   const int bits_used = rc->base_frame_target;
+#endif
   const RateControlCfg *const rc_cfg = &encode_context_ptr->rc_cfg;
 
   // VBR correction is done through rc->vbr_bits_off_target. Based on the
