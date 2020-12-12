@@ -2275,8 +2275,11 @@ static void setup_target_rate(PictureParentControlSet *pcs_ptr) {
   GF_GROUP *const gf_group = &encode_context_ptr->gf_group;
 
   int target_rate = gf_group->bit_allocation[pcs_ptr->gf_group_index];
-
+#if FTR_VBR_MT_ST7
+  pcs_ptr->base_frame_target = target_rate;
+#else
   rc->base_frame_target = target_rate;
+#endif
 }
 
 void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
@@ -2713,14 +2716,22 @@ void svt_av1_twopass_postencode_update(PictureParentControlSet *ppcs_ptr) {
   // of subsequent frames, to try and push it back towards 0. This method
   // is designed to prevent extreme behaviour at the end of a clip
   // or group of frames.
+#if FTR_VBR_MT_ST7
+  rc->vbr_bits_off_target += ppcs_ptr->base_frame_target - ppcs_ptr->projected_frame_size;
+#else
   rc->vbr_bits_off_target += rc->base_frame_target - rc->projected_frame_size;
+#endif
 #if !FTR_VBR_MT_ST5
   twopass->bits_left = AOMMAX(twopass->bits_left - bits_used, 0);
 #endif
   // Target vs actual bits for this arf group.
+#if FTR_VBR_MT_ST7
+  twopass->rolling_arf_group_target_bits += ppcs_ptr->this_frame_target;
+  twopass->rolling_arf_group_actual_bits += ppcs_ptr->projected_frame_size;
+#else
   twopass->rolling_arf_group_target_bits += rc->this_frame_target;
   twopass->rolling_arf_group_actual_bits += rc->projected_frame_size;
-
+#endif
   // Calculate the pct rc error.
   if (rc->total_actual_bits) {
     rc->rate_error_estimate =
@@ -2766,8 +2777,13 @@ void svt_av1_twopass_postencode_update(PictureParentControlSet *ppcs_ptr) {
         ++twopass->extend_maxq;
     } else {
       // Adjustment for extreme local overshoot.
+#if FTR_VBR_MT_ST7
+        if (ppcs_ptr->projected_frame_size > (2 * ppcs_ptr->base_frame_target) &&
+            ppcs_ptr->projected_frame_size > (2 * rc->avg_frame_bandwidth))
+#else
       if (rc->projected_frame_size > (2 * rc->base_frame_target) &&
           rc->projected_frame_size > (2 * rc->avg_frame_bandwidth))
+#endif
         ++twopass->extend_maxq;
 
       // Unwind undershoot or overshoot adjustment.
@@ -2785,10 +2801,17 @@ void svt_av1_twopass_postencode_update(PictureParentControlSet *ppcs_ptr) {
     // frame is unexpectedly almost perfectly predicted by the ARF or GF
     // but not very well predcited by the previous frame.
     if (!frame_is_kf_gf_arf(ppcs_ptr) && !rc->is_src_frame_alt_ref) {
-      int fast_extra_thresh = rc->base_frame_target / HIGH_UNDERSHOOT_RATIO;
-      if (rc->projected_frame_size < fast_extra_thresh) {
+#if FTR_VBR_MT_ST7
+      int fast_extra_thresh = ppcs_ptr->base_frame_target / HIGH_UNDERSHOOT_RATIO;
+      if (ppcs_ptr->projected_frame_size < fast_extra_thresh) {
         rc->vbr_bits_off_target_fast +=
-            fast_extra_thresh - rc->projected_frame_size;
+            fast_extra_thresh - ppcs_ptr->projected_frame_size;
+#else
+        int fast_extra_thresh = rc->base_frame_target / HIGH_UNDERSHOOT_RATIO;
+      if (rc->projected_frame_size < fast_extra_thresh) {
+          rc->vbr_bits_off_target_fast +=
+              fast_extra_thresh - rc->projected_frame_size;
+#endif
         rc->vbr_bits_off_target_fast =
             AOMMIN(rc->vbr_bits_off_target_fast, (4 * rc->avg_frame_bandwidth));
 

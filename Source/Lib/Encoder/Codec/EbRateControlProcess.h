@@ -81,11 +81,13 @@ typedef enum rate_factor_level {
 } rate_factor_level;
 
 typedef struct {
+#if !FTR_VBR_MT_ST7
     // Rate targetting variables
     int base_frame_target; // A baseline frame target before adjustment
         // for previous under or over shoot.
     int this_frame_target; // Actual frame target after rc adjustment.
     int projected_frame_size;
+#endif
     int sb64_target_rate;
     int last_q[FRAME_TYPES]; // Separate values for Intra/Inter
     int last_boosted_qindex; // Last boosted GF/KF/ARF q
@@ -187,11 +189,11 @@ typedef struct {
     int gf_interval;
 #else
     // number of determined gf group length left
-    int intervals_till_gf_calculate_due; //anaghdin to remove under FTR_VBR_MT_CL1
+    int intervals_till_gf_calculate_due;
     // stores gf group length intervals
-    int gf_intervals[MAX_NUM_GF_INTERVALS]; //anaghdin to remove under FTR_VBR_MT_CL1 and changed to gf_interval
+    int gf_intervals[MAX_NUM_GF_INTERVALS];
     // the current index in gf_intervals
-    int cur_gf_index; //anaghdin to remove under FTR_VBR_MT_CL1
+    int cur_gf_index;
 #endif
 
     // gop bit budget

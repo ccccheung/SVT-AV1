@@ -48,6 +48,7 @@ extern "C" {
 #define FTR_VBR_MT_REMOVE_DEC_ORDER 1 // Remove the decode order constraint
 #define FTR_VBR_MT_CL1          1 // Remove intervals_till_gf_calculate_due, cur_gf_index and replace gf_intervals[] with gf_interval
 #define FTR_VBR_MT_CL2          1 // Remove arf_src_offset, cur_frame_idx and q_val
+#define FTR_VBR_MT_ST7          1 // move base_frame_target,this_frame_target and projected_frame_size to PCS
 #define FTR_VBR_MT_LOG          0
 #endif
 //FOR DEBUGGING - Do not remove
