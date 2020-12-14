@@ -7306,7 +7306,9 @@ void recode_loop_update_q(PictureParentControlSet *ppcs_ptr, int *const loop, in
     *loop = (*q != last_q);
 }
 #if FTR_VBR_MT_ST1
-// Populate the required parameters in rc structure from other structures
+/************************************************************************************************
+* Populate the required parameters in rc structure from other structures
+*************************************************************************************************/
 static void restore_rc_param(PictureParentControlSet *ppcs_ptr) {
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
@@ -7318,7 +7320,9 @@ static void restore_rc_param(PictureParentControlSet *ppcs_ptr) {
 #endif
 #endif
 }
-// Populate the required parameters in two_pass structure from other structures
+/************************************************************************************************
+* Populate the required parameters in two_pass structure from other structures
+*************************************************************************************************/
 #if FTR_VBR_MT_ST6
 static void restore_two_pass_param(PictureParentControlSet *        ppcs_ptr,
                                    RateControlIntervalParamContext *rate_control_param_ptr) {
@@ -7336,10 +7340,10 @@ void static restore_two_pass_param(PictureParentControlSet *ppcs_ptr) {
     twopass->kf_group_error_left = rate_control_param_ptr->kf_group_error_left;
 #endif
 }
-
-// Populate the required parameters in gf_group structure from other structures
+/************************************************************************************************
+* Populate the required parameters in gf_group structure from other structures
+*************************************************************************************************/
 static void restore_gf_group_param(PictureParentControlSet *ppcs_ptr) {
-
 #if FTR_VBR_MT_ST5
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
@@ -7351,8 +7355,9 @@ static void restore_gf_group_param(PictureParentControlSet *ppcs_ptr) {
 
 #endif
 }
-
-// Populate the required parameters in rc, twopass and gf_group structures from other structures
+/************************************************************************************************
+* Populate the required parameters in rc, twopass and gf_group structures from other structures
+*************************************************************************************************/
 #if FTR_VBR_MT_ST6
 static void restore_param(PictureParentControlSet *ppcs_ptr,
     RateControlIntervalParamContext *rate_control_param_ptr) {
@@ -7403,7 +7408,9 @@ void static restore_param(PictureParentControlSet *ppcs_ptr) {
 }
 #endif
 #if FTR_VBR_MT_ST2
-// Store the required parameters from rc structure to other structures
+/************************************************************************************************
+* Store the required parameters from rc structure to other structures
+*************************************************************************************************/
 static void store_rc_param(PictureParentControlSet *ppcs_ptr) {
 #if FTR_VBR_MT_ST3
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
@@ -7446,7 +7453,9 @@ static void store_rc_param(PictureParentControlSet *ppcs_ptr) {
 
 #endif
 }
-// Store the required parameters in two_pass structure from other structures
+/************************************************************************************************
+* Store the required parameters in two_pass structure from other structures
+*************************************************************************************************/
 #if FTR_VBR_MT_ST6
 static void store_two_pass_param(PictureParentControlSet *        ppcs_ptr,
                                  RateControlIntervalParamContext *rate_control_param_ptr) {
@@ -7460,8 +7469,9 @@ void static store_two_pass_param(PictureParentControlSet *ppcs_ptr) {
     rate_control_param_ptr->kf_group_error_left = twopass->kf_group_error_left;
 #endif
 }
-
-// Store the required parameters from gf_group structure to other structures
+/************************************************************************************************
+* Store the required parameters from gf_group structure to other structures
+*************************************************************************************************/
 static void store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
     SequenceControlSet *scs_ptr            = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
@@ -7506,8 +7516,9 @@ static void store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
     }
 #endif
 }
-
-// Store the required parameters from rc, twopass and gf_group structures to other structures
+/************************************************************************************************
+* Store the required parameters from rc, twopass and gf_group structures to other structures
+*************************************************************************************************/
 #if FTR_VBR_MT_ST6
 static void store_param(PictureParentControlSet *ppcs_ptr,
     RateControlIntervalParamContext *rate_control_param_ptr) {

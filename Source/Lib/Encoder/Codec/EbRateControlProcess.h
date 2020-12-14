@@ -54,9 +54,11 @@
 #define MAX_GF_INTERVAL 32
 #define FIXED_GF_INTERVAL 8 // Used in some testing modes only
 #define MAX_GF_LENGTH_LAP 16
-
+#if FTR_VBR_MT_CL1
+#define MAX_NUM_GF_INTERVALS 64
+#else
 #define MAX_NUM_GF_INTERVALS 15
-
+#endif
 #define MAX_ARF_LAYERS 6
 
 enum {

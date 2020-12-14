@@ -2281,7 +2281,24 @@ static void setup_target_rate(PictureParentControlSet *pcs_ptr) {
   rc->base_frame_target = target_rate;
 #endif
 }
-
+#if FTR_VBR_MT_ST4
+// Calculates is new gf group and stores in pcs_ptr->is_new_gf_group
+// For P pictures in the incomplete minigops, since there is no order, we search all of them and set the flag accordingly
+static void is_new_gf_group(PictureParentControlSet *pcs_ptr) {
+    pcs_ptr->is_new_gf_group = 0;
+    if (pcs_ptr->slice_type != P_SLICE)
+        pcs_ptr->is_new_gf_group = pcs_ptr->gf_update_due;
+    else {
+        for (int pic_i = 0; pic_i < pcs_ptr->gf_interval; ++pic_i)
+            if (pcs_ptr->gf_group[pic_i] && pcs_ptr->gf_group[pic_i]->slice_type == P_SLICE && pcs_ptr->gf_group[pic_i]->gf_update_due)
+                pcs_ptr->is_new_gf_group = 1;
+        if (pcs_ptr->is_new_gf_group)
+            for (int pic_i = 0; pic_i < pcs_ptr->gf_interval; ++pic_i)
+                if (pcs_ptr->gf_group[pic_i])
+                    pcs_ptr->gf_group[pic_i]->gf_update_due = 0;
+    }
+}
+#endif
 void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
     SequenceControlSet *scs_ptr = pcs_ptr->scs_ptr;
     EncodeContext *encode_context_ptr = scs_ptr->encode_context_ptr;
@@ -2379,19 +2396,7 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
 
   // Define a new GF/ARF group. (Should always enter here for key frames).
 #if FTR_VBR_MT_ST4
-  //anaghdin add to a function with description
-  pcs_ptr->is_new_gf_group = 0;
-  if (pcs_ptr->slice_type != P_SLICE)
-      pcs_ptr->is_new_gf_group = pcs_ptr->gf_update_due;
-  else {
-      for (int pic_i = 0; pic_i < pcs_ptr->gf_interval; ++pic_i)
-          if (pcs_ptr->gf_group[pic_i] && pcs_ptr->gf_group[pic_i]->slice_type == P_SLICE && pcs_ptr->gf_group[pic_i]->gf_update_due)
-              pcs_ptr->is_new_gf_group = 1;
-      if (pcs_ptr->is_new_gf_group)
-          for (int pic_i = 0; pic_i < pcs_ptr->gf_interval; ++pic_i)
-              if (pcs_ptr->gf_group[pic_i])
-                  pcs_ptr->gf_group[pic_i]->gf_update_due = 0;
-  }
+  is_new_gf_group(pcs_ptr);
   if (pcs_ptr->is_new_gf_group) {
 #else
   if (rc->frames_till_gf_update_due == 0) {
