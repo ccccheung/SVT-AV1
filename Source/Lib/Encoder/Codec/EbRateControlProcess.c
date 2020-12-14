@@ -7055,8 +7055,8 @@ static AOM_INLINE int recode_loop_test(PictureParentControlSet *ppcs_ptr, int hi
 // get overshoot regulated q based on q_low
 static int get_regulated_q_overshoot(PictureParentControlSet *ppcs_ptr, int q_low, int q_high,
                                      int top_index, int bottom_index) {
-    EncodeContext *const encode_context_ptr = ppcs_ptr->scs_ptr->encode_context_ptr;
 #if !FTR_VBR_MT
+    EncodeContext *const encode_context_ptr = ppcs_ptr->scs_ptr->encode_context_ptr;
     RATE_CONTROL *const  rc                 = &(encode_context_ptr->rc);
 #endif
     const int            width              = ppcs_ptr->av1_cm->frm_size.frame_width;
@@ -7091,8 +7091,8 @@ static int get_regulated_q_overshoot(PictureParentControlSet *ppcs_ptr, int q_lo
 // get undershoot regulated q based on q_high
 static AOM_INLINE int get_regulated_q_undershoot(PictureParentControlSet *ppcs_ptr, int q_high,
                                                  int top_index, int bottom_index) {
-    EncodeContext *const encode_context_ptr = ppcs_ptr->scs_ptr->encode_context_ptr;
 #if !FTR_VBR_MT
+    EncodeContext *const encode_context_ptr = ppcs_ptr->scs_ptr->encode_context_ptr;
     RATE_CONTROL *const  rc                 = &(encode_context_ptr->rc);
 #endif
     const int            width              = ppcs_ptr->av1_cm->frm_size.frame_width;

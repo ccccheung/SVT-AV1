@@ -4044,7 +4044,7 @@ void send_picture_out(
         pcs->stats_in_offset = pcs->decode_order;
         if (scs->lap_enabled)
             pcs->stats_in_end_offset = MIN((uint64_t)(scs->twopass.stats_buf_ctx->stats_in_end_write - scs->twopass.stats_buf_ctx->stats_in_start),
-                pcs->stats_in_offset + (1 << pcs->hierarchical_levels) + SCD_LAD - 1);
+                pcs->stats_in_offset + (uint64_t)(1 << pcs->hierarchical_levels) + SCD_LAD - 1);
         else
             // for use_input_stat(scs)
             pcs->stats_in_end_offset = (uint64_t)(scs->twopass.stats_buf_ctx->stats_in_end_write - scs->twopass.stats_buf_ctx->stats_in_start);
