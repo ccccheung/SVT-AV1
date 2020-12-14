@@ -2274,10 +2274,10 @@ static void setup_target_rate(PictureParentControlSet *pcs_ptr) {
   RATE_CONTROL *const rc = &encode_context_ptr->rc;
   GF_GROUP *const gf_group = &encode_context_ptr->gf_group;
 
-  int target_rate = gf_group->bit_allocation[pcs_ptr->gf_group_index];
 #if FTR_VBR_MT_ST7
-  pcs_ptr->base_frame_target = target_rate;
+  pcs_ptr->base_frame_target = gf_group->bit_allocation[pcs_ptr->gf_group_index];
 #else
+  int target_rate = gf_group->bit_allocation[pcs_ptr->gf_group_index];
   rc->base_frame_target = target_rate;
 #endif
 }

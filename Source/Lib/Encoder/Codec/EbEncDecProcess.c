@@ -4243,10 +4243,11 @@ static void recode_loop_decision_maker(PictureControlSet *pcs_ptr,
             &ppcs_ptr->low_cr_seen, ppcs_ptr->loop_count);
 
     // Special case for overlay frame.
-    if (loop && rc->is_src_frame_alt_ref &&
 #if FTR_VBR_MT_ST7
+    if (loop && ppcs_ptr->is_src_frame_alt_ref &&
         ppcs_ptr->projected_frame_size < rc->max_frame_bandwidth) {
 #else
+        if (loop && rc->is_src_frame_alt_ref &&
         rc->projected_frame_size < rc->max_frame_bandwidth) {
 #endif
         loop = 0;

@@ -924,13 +924,15 @@ typedef struct PictureParentControlSet {
     int                             update_type;
     int                             layer_depth;
     int                             arf_boost;
-    int                             bit_allocation; // anaghdin use base_frame_target instead
+#if !FTR_VBR_MT_ST7
+    int                             bit_allocation;
+#endif
 #endif
 #if FTR_VBR_MT_ST3
     //RATE_CONTROL parameters store in PCS
-    int                             base_frame_target; // A baseline frame target before adjustment. anaghdin to removed the one in rc and use the one in ppcs
-    int                             this_frame_target; // Actual frame target after rc adjustment. anaghdin to removed the one in rc and use the one in ppcs
-    int                             projected_frame_size;//anaghdin no need to store, used locally. to be moved to ppcs
+    int                             base_frame_target; // A baseline frame target before adjustment.
+    int                             this_frame_target; // Actual frame target after rc adjustment.
+    int                             projected_frame_size;
 
     int                             frames_to_key;
     int                             frames_since_key;

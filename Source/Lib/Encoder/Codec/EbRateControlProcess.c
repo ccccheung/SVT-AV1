@@ -7474,10 +7474,11 @@ static void store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
             ppcs_ptr->gf_group[frame_idx]->update_type    = gf_group->update_type[gf_group_index];
             ppcs_ptr->gf_group[frame_idx]->layer_depth    = gf_group->layer_depth[gf_group_index];
             ppcs_ptr->gf_group[frame_idx]->arf_boost      = gf_group->arf_boost[gf_group_index];
-            ppcs_ptr->gf_group[frame_idx]->bit_allocation =
-                gf_group->bit_allocation[gf_group_index];
 #if FTR_VBR_MT_ST7
             ppcs_ptr->gf_group[frame_idx]->base_frame_target =
+                gf_group->bit_allocation[gf_group_index];
+#else
+            ppcs_ptr->gf_group[frame_idx]->bit_allocation =
                 gf_group->bit_allocation[gf_group_index];
 #endif
         }
