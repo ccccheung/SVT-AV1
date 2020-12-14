@@ -39,16 +39,18 @@ extern "C" {
 #endif
 #define FTR_VBR_MT              1
 #if FTR_VBR_MT
-#define FTR_VBR_MT_ST1          1 // Storing/Restoring the stat ptrs in PCS
-#define FTR_VBR_MT_ST2          1 // Storing/Restoring gf_group in PCS
-#define FTR_VBR_MT_ST3          1 // Storing/Restoring rate_control in PCS
-#define FTR_VBR_MT_ST4          1 // Replacing gf_interval calculation
-#define FTR_VBR_MT_ST5          1 // Restore values from PCS to RC, fix kf_group_bit
-#define FTR_VBR_MT_ST6          1 // Move kf_group_bit and kf_group_error_left to rate_control_param_ptr
+#if 0
+#define FTR_VBR_MT          1 // Storing/Restoring the stat ptrs in PCS
+#define FTR_VBR_MT          1 // Storing/Restoring gf_group in PCS
+#define FTR_VBR_MT          1 // Storing/Restoring rate_control in PCS
+#define FTR_VBR_MT          1 // Replacing gf_interval calculation
+#define FTR_VBR_MT          1 // Restore values from PCS to RC, fix kf_group_bit
+#define FTR_VBR_MT          1 // Move kf_group_bit and kf_group_error_left to rate_control_param_ptr
+#define FTR_VBR_MT          1 // Remove intervals_till_gf_calculate_due, cur_gf_index and replace gf_intervals[] with gf_interval
+#define FTR_VBR_MT          1 // Remove arf_src_offset, cur_frame_idx and q_val
+#define FTR_VBR_MT          1 // move base_frame_target,this_frame_target and projected_frame_size to PCS
+#endif
 #define FTR_VBR_MT_REMOVE_DEC_ORDER 1 // Remove the decode order constraint
-#define FTR_VBR_MT_CL1          1 // Remove intervals_till_gf_calculate_due, cur_gf_index and replace gf_intervals[] with gf_interval
-#define FTR_VBR_MT_CL2          1 // Remove arf_src_offset, cur_frame_idx and q_val
-#define FTR_VBR_MT_ST7          1 // move base_frame_target,this_frame_target and projected_frame_size to PCS
 #define FTR_VBR_MT_LOG          0
 #endif
 //FOR DEBUGGING - Do not remove

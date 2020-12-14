@@ -54,7 +54,7 @@
 #define MAX_GF_INTERVAL 32
 #define FIXED_GF_INTERVAL 8 // Used in some testing modes only
 #define MAX_GF_LENGTH_LAP 16
-#if FTR_VBR_MT_CL1
+#if FTR_VBR_MT
 #define MAX_NUM_GF_INTERVALS 64
 #else
 #define MAX_NUM_GF_INTERVALS 15
@@ -83,7 +83,7 @@ typedef enum rate_factor_level {
 } rate_factor_level;
 
 typedef struct {
-#if !FTR_VBR_MT_ST7
+#if !FTR_VBR_MT
     // Rate targetting variables
     int base_frame_target; // A baseline frame target before adjustment
         // for previous under or over shoot.
@@ -101,7 +101,7 @@ typedef struct {
     double rate_correction_factors[RATE_FACTOR_LEVELS];
 
     int frames_since_golden;
-#if !FTR_VBR_MT_ST4
+#if !FTR_VBR_MT
     int frames_till_gf_update_due;
 #endif
     int min_gf_interval;
@@ -187,7 +187,7 @@ typedef struct {
     int active_best_quality[MAX_ARF_LAYERS + 1];
     int base_layer_qp;
 
-#if FTR_VBR_MT_CL1
+#if FTR_VBR_MT
     int gf_interval;
 #else
     // number of determined gf group length left
@@ -210,7 +210,7 @@ typedef struct {
     int enable_scenecut_detection;
     int use_arf_in_this_kf_group;
     int next_is_fwd_key;
-#if !FTR_VBR_MT_ST3
+#if !FTR_VBR_MT
     int top_index;
     int bottom_index;
 #endif

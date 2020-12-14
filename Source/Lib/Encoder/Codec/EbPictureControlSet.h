@@ -892,7 +892,7 @@ typedef struct PictureParentControlSet {
     uint8_t    is_next_frame_intra;
     TfControls tf_ctrls;
     GmControls gm_ctrls;
-#if FTR_VBR_MT_ST1
+#if FTR_VBR_MT
     // RC related variables
 #else
     // Loop variables
@@ -913,22 +913,22 @@ typedef struct PictureParentControlSet {
     struct PictureParentControlSet *first_pass_ref_ppcs_ptr[2];
     uint8_t                         first_pass_ref_count;
     uint8_t                         first_pass_done;
-#if FTR_VBR_MT_ST1
+#if FTR_VBR_MT
     // the offsets for STATS_BUFFER_CTX
     uint64_t                        stats_in_end_offset;
     // the offsets for stats_in
     uint64_t                        stats_in_offset;
 #endif
-#if FTR_VBR_MT_ST2
+#if FTR_VBR_MT
     //GF_GROUP parameters store in PCS
     int                             update_type;
     int                             layer_depth;
     int                             arf_boost;
-#if !FTR_VBR_MT_ST7
+#if !FTR_VBR_MT
     int                             bit_allocation;
 #endif
 #endif
-#if FTR_VBR_MT_ST3
+#if FTR_VBR_MT
     //RATE_CONTROL parameters store in PCS
     int                             base_frame_target; // A baseline frame target before adjustment.
     int                             this_frame_target; // Actual frame target after rc adjustment.
@@ -946,7 +946,7 @@ typedef struct PictureParentControlSet {
     int                             bottom_index;
 
 #endif
-#if FTR_VBR_MT_ST4
+#if FTR_VBR_MT
     // stores gf group (minigop) length
     int                             gf_interval;
     int                             gf_update_due; // thr gf update in RC is due for I, or base frames (except the one after I) or P frames

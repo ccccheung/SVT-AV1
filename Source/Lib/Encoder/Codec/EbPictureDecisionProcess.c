@@ -4039,7 +4039,7 @@ void send_picture_out(
             }
         }
     }
-#if FTR_VBR_MT_ST1
+#if FTR_VBR_MT
     if (scs->lap_enabled || use_input_stat(scs)) {
         pcs->stats_in_offset = pcs->decode_order;
         if (scs->lap_enabled)
@@ -4073,7 +4073,7 @@ void send_picture_out(
     }
 
 }
-#if FTR_VBR_MT_ST4
+#if FTR_VBR_MT
 // Store the pcs pointers in the gf group, set the gf_interval and gf_update_due
 void store_gf_group(
     PictureParentControlSet *pcs,
@@ -5579,7 +5579,7 @@ void* picture_decision_kernel(void *input_ptr)
                                 }
                             }
                         }
-#if FTR_VBR_MT_ST4
+#if FTR_VBR_MT
                         //Process previous delayed Intra if we have one
                         pcs_ptr->is_new_gf_group = 0;
                         if (context_ptr->prev_delayed_intra) {
