@@ -2271,7 +2271,9 @@ static void process_first_pass_stats(PictureParentControlSet *pcs_ptr,
 static void setup_target_rate(PictureParentControlSet *pcs_ptr) {
     SequenceControlSet *scs_ptr = pcs_ptr->scs_ptr;
   EncodeContext *encode_context_ptr = scs_ptr->encode_context_ptr;
+#if !FTR_VBR_MT
   RATE_CONTROL *const rc = &encode_context_ptr->rc;
+#endif
   GF_GROUP *const gf_group = &encode_context_ptr->gf_group;
 
 #if FTR_VBR_MT

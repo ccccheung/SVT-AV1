@@ -6951,10 +6951,10 @@ static void av1_configure_buffer_updates(PictureControlSet *          pcs_ptr,
 static void av1_set_target_rate(PictureControlSet *pcs_ptr, int width, int height) {
     SequenceControlSet *        scs_ptr            = pcs_ptr->parent_pcs_ptr->scs_ptr;
     EncodeContext *             encode_context_ptr = scs_ptr->encode_context_ptr;
-    RATE_CONTROL *              rc                 = &encode_context_ptr->rc;
 #if FTR_VBR_MT
     int                         target_rate        = pcs_ptr->parent_pcs_ptr->base_frame_target;
 #else
+    RATE_CONTROL *              rc                 = &encode_context_ptr->rc;
     int                         target_rate = rc->base_frame_target;
 #endif
     const RateControlCfg *const rc_cfg             = &encode_context_ptr->rc_cfg;
@@ -7056,7 +7056,9 @@ static AOM_INLINE int recode_loop_test(PictureParentControlSet *ppcs_ptr, int hi
 static int get_regulated_q_overshoot(PictureParentControlSet *ppcs_ptr, int q_low, int q_high,
                                      int top_index, int bottom_index) {
     EncodeContext *const encode_context_ptr = ppcs_ptr->scs_ptr->encode_context_ptr;
+#if !FTR_VBR_MT
     RATE_CONTROL *const  rc                 = &(encode_context_ptr->rc);
+#endif
     const int            width              = ppcs_ptr->av1_cm->frm_size.frame_width;
     const int            height             = ppcs_ptr->av1_cm->frm_size.frame_height;
 
@@ -7090,7 +7092,9 @@ static int get_regulated_q_overshoot(PictureParentControlSet *ppcs_ptr, int q_lo
 static AOM_INLINE int get_regulated_q_undershoot(PictureParentControlSet *ppcs_ptr, int q_high,
                                                  int top_index, int bottom_index) {
     EncodeContext *const encode_context_ptr = ppcs_ptr->scs_ptr->encode_context_ptr;
+#if !FTR_VBR_MT
     RATE_CONTROL *const  rc                 = &(encode_context_ptr->rc);
+#endif
     const int            width              = ppcs_ptr->av1_cm->frm_size.frame_width;
     const int            height             = ppcs_ptr->av1_cm->frm_size.frame_height;
 
@@ -7307,15 +7311,6 @@ void recode_loop_update_q(PictureParentControlSet *ppcs_ptr, int *const loop, in
 }
 #if FTR_VBR_MT
 /************************************************************************************************
-* Populate the required parameters in rc structure from other structures
-*************************************************************************************************/
-static void restore_rc_param(PictureParentControlSet *ppcs_ptr) { //anaghdin
-    SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
-    EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
-    RATE_CONTROL *      rc = &encode_context_ptr->rc;
-
-}
-/************************************************************************************************
 * Populate the required parameters in two_pass structure from other structures
 *************************************************************************************************/
 static void restore_two_pass_param(PictureParentControlSet *        ppcs_ptr,
@@ -7380,7 +7375,6 @@ static void restore_param(PictureParentControlSet *ppcs_ptr,
         ppcs_ptr->frames_since_key,
         rc->frames_since_key);
 #endif
-    restore_rc_param(ppcs_ptr);
     restore_gf_group_param(ppcs_ptr);
 }
 /************************************************************************************************
@@ -7406,7 +7400,7 @@ static void store_two_pass_param(PictureParentControlSet *        ppcs_ptr,
                                  RateControlIntervalParamContext *rate_control_param_ptr) {
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     TWO_PASS *const     twopass = &scs_ptr->twopass;
- 
+
     rate_control_param_ptr->kf_group_bits       = twopass->kf_group_bits;
     rate_control_param_ptr->kf_group_error_left = twopass->kf_group_error_left;
 }
@@ -7867,7 +7861,6 @@ void *rate_control_kernel(void *input_ptr) {
             }
 #if FTR_VBR_MT
             restore_gf_group_param(parentpicture_control_set_ptr);
-            restore_rc_param(parentpicture_control_set_ptr);
 #endif
             if (scs_ptr->static_config.rate_control_mode == 0) {
                 av1_rc_postencode_update(parentpicture_control_set_ptr,
