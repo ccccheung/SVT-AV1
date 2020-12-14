@@ -924,11 +924,6 @@ typedef struct PictureParentControlSet {
     int                             update_type;
     int                             layer_depth;
     int                             arf_boost;
-#if !FTR_VBR_MT
-    int                             bit_allocation;
-#endif
-#endif
-#if FTR_VBR_MT
     //RATE_CONTROL parameters store in PCS
     int                             base_frame_target; // A baseline frame target before adjustment.
     int                             this_frame_target; // Actual frame target after rc adjustment.
@@ -937,16 +932,12 @@ typedef struct PictureParentControlSet {
     int                             frames_to_key;
     int                             frames_since_key;
     int                             is_src_frame_alt_ref;
-
     // Total number of stats used only for gfu_boost calculation.
     int                             num_stats_used_for_gfu_boost;
     // Total number of stats required by gfu_boost calculation.
     int                             num_stats_required_for_gfu_boost;
     int                             top_index;
     int                             bottom_index;
-
-#endif
-#if FTR_VBR_MT
     // stores gf group (minigop) length
     int                             gf_interval;
     int                             gf_update_due; // thr gf update in RC is due for I, or base frames (except the one after I) or P frames

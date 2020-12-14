@@ -7309,42 +7309,30 @@ void recode_loop_update_q(PictureParentControlSet *ppcs_ptr, int *const loop, in
 /************************************************************************************************
 * Populate the required parameters in rc structure from other structures
 *************************************************************************************************/
-static void restore_rc_param(PictureParentControlSet *ppcs_ptr) {
+static void restore_rc_param(PictureParentControlSet *ppcs_ptr) { //anaghdin
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
     RATE_CONTROL *      rc = &encode_context_ptr->rc;
-#if FTR_VBR_MT
-#if !FTR_VBR_MT
-    rc->base_frame_target = ppcs_ptr->bit_allocation;
-    rc->this_frame_target = ppcs_ptr->this_frame_target;
-#endif
-#endif
+
 }
 /************************************************************************************************
 * Populate the required parameters in two_pass structure from other structures
 *************************************************************************************************/
-#if FTR_VBR_MT
 static void restore_two_pass_param(PictureParentControlSet *        ppcs_ptr,
                                    RateControlIntervalParamContext *rate_control_param_ptr) {
-#else
-void static restore_two_pass_param(PictureParentControlSet *ppcs_ptr) {
-#endif
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     TWO_PASS *const     twopass = &scs_ptr->twopass;
 
     twopass->stats_in = scs_ptr->twopass.stats_buf_ctx->stats_in_start + ppcs_ptr->stats_in_offset;
     twopass->stats_buf_ctx->stats_in_end = scs_ptr->twopass.stats_buf_ctx->stats_in_start +
         ppcs_ptr->stats_in_end_offset;
-#if FTR_VBR_MT
     twopass->kf_group_bits       = rate_control_param_ptr->kf_group_bits;
     twopass->kf_group_error_left = rate_control_param_ptr->kf_group_error_left;
-#endif
 }
 /************************************************************************************************
 * Populate the required parameters in gf_group structure from other structures
 *************************************************************************************************/
 static void restore_gf_group_param(PictureParentControlSet *ppcs_ptr) {
-#if FTR_VBR_MT
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
     GF_GROUP *const     gf_group = &encode_context_ptr->gf_group;
@@ -7352,26 +7340,17 @@ static void restore_gf_group_param(PictureParentControlSet *ppcs_ptr) {
     gf_group->update_type[gf_group->index] = ppcs_ptr->update_type;
     gf_group->layer_depth[gf_group->index] = ppcs_ptr->layer_depth;
     gf_group->arf_boost[gf_group->index] = ppcs_ptr->arf_boost;
-
-#endif
 }
 /************************************************************************************************
 * Populate the required parameters in rc, twopass and gf_group structures from other structures
 *************************************************************************************************/
-#if FTR_VBR_MT
 static void restore_param(PictureParentControlSet *ppcs_ptr,
     RateControlIntervalParamContext *rate_control_param_ptr) {
     restore_two_pass_param(ppcs_ptr, rate_control_param_ptr);
-#else
-void static restore_param(PictureParentControlSet *ppcs_ptr) {
-    restore_two_pass_param(ppcs_ptr);
-#endif
-#if FTR_VBR_MT
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
 
     const KeyFrameCfg *const kf_cfg = &encode_context_ptr->kf_cfg;
-
     ppcs_ptr->frames_since_key = (int)(ppcs_ptr->decode_order - ppcs_ptr->last_idr_picture);
     int key_max;
     if (scs_ptr->lap_enabled) {
@@ -7401,29 +7380,17 @@ void static restore_param(PictureParentControlSet *ppcs_ptr) {
         ppcs_ptr->frames_since_key,
         rc->frames_since_key);
 #endif
-#endif
-
     restore_rc_param(ppcs_ptr);
     restore_gf_group_param(ppcs_ptr);
 }
-#endif
-#if FTR_VBR_MT
 /************************************************************************************************
 * Store the required parameters from rc structure to other structures
 *************************************************************************************************/
 static void store_rc_param(PictureParentControlSet *ppcs_ptr) {
-#if FTR_VBR_MT
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
     RATE_CONTROL *      rc                 = &encode_context_ptr->rc;
 
-    //RATE_CONTROL parameters store in PCS
-#if !FTR_VBR_MT
-    ppcs_ptr->base_frame_target    = rc->base_frame_target;
-    ppcs_ptr->this_frame_target    = rc->this_frame_target;
-    ppcs_ptr->projected_frame_size = rc->projected_frame_size;
-#endif
-#if FTR_VBR_MT
     ppcs_ptr->is_src_frame_alt_ref = ppcs_ptr->is_overlay;
     if (ppcs_ptr->is_new_gf_group) {
         for (uint8_t frame_idx = 0; frame_idx < (int32_t)ppcs_ptr->gf_interval; frame_idx++) {
@@ -7431,43 +7398,17 @@ static void store_rc_param(PictureParentControlSet *ppcs_ptr) {
             ppcs_ptr->gf_group[frame_idx]->num_stats_required_for_gfu_boost = rc->num_stats_required_for_gfu_boost;
         }
     }
-#else
-    // new GF group and bit allocation is done for: 1. I_Slice, 2: base layer which is not coming after an I
-    uint8_t is_new_gf_group = (ppcs_ptr->slice_type == I_SLICE ||
-        ppcs_ptr->slice_type != I_SLICE &&
-        ppcs_ptr->temporal_layer_index == 0 &&
-        ppcs_ptr->child_pcs->ref_slice_type_array[0][0] != I_SLICE)
-        ? 1
-        : 0;
-
-    ppcs_ptr->is_src_frame_alt_ref = ppcs_ptr->is_overlay;
-    if (is_new_gf_group) {
-        for (uint8_t frame_idx = 0;
-            frame_idx < (int32_t)ppcs_ptr->tpl_group_size - ppcs_ptr->tpl_trailing_frame_count;
-            frame_idx++) {
-            ppcs_ptr->tpl_group[frame_idx]->num_stats_used_for_gfu_boost = rc->num_stats_used_for_gfu_boost;
-            ppcs_ptr->tpl_group[frame_idx]->num_stats_required_for_gfu_boost = rc->num_stats_required_for_gfu_boost;
-        }
-    }
-#endif
-
-#endif
 }
 /************************************************************************************************
 * Store the required parameters in two_pass structure from other structures
 *************************************************************************************************/
-#if FTR_VBR_MT
 static void store_two_pass_param(PictureParentControlSet *        ppcs_ptr,
                                  RateControlIntervalParamContext *rate_control_param_ptr) {
-#else
-void static store_two_pass_param(PictureParentControlSet *ppcs_ptr) {
-#endif
     SequenceControlSet *scs_ptr = ppcs_ptr->scs_ptr;
     TWO_PASS *const     twopass = &scs_ptr->twopass;
-#if FTR_VBR_MT
+ 
     rate_control_param_ptr->kf_group_bits       = twopass->kf_group_bits;
     rate_control_param_ptr->kf_group_error_left = twopass->kf_group_error_left;
-#endif
 }
 /************************************************************************************************
 * Store the required parameters from gf_group structure to other structures
@@ -7476,7 +7417,6 @@ static void store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
     SequenceControlSet *scs_ptr            = ppcs_ptr->scs_ptr;
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
     GF_GROUP *const     gf_group           = &encode_context_ptr->gf_group;
-#if FTR_VBR_MT
     if (ppcs_ptr->is_new_gf_group) {
         for (uint8_t frame_idx = 0; frame_idx < (int32_t)ppcs_ptr->gf_interval; frame_idx++) {
             uint8_t gf_group_index = ppcs_ptr->slice_type == I_SLICE ? frame_idx : frame_idx + 1;
@@ -7484,53 +7424,19 @@ static void store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
             ppcs_ptr->gf_group[frame_idx]->update_type    = gf_group->update_type[gf_group_index];
             ppcs_ptr->gf_group[frame_idx]->layer_depth    = gf_group->layer_depth[gf_group_index];
             ppcs_ptr->gf_group[frame_idx]->arf_boost      = gf_group->arf_boost[gf_group_index];
-#if FTR_VBR_MT
             ppcs_ptr->gf_group[frame_idx]->base_frame_target =
                 gf_group->bit_allocation[gf_group_index];
-#else
-            ppcs_ptr->gf_group[frame_idx]->bit_allocation =
-                gf_group->bit_allocation[gf_group_index];
-#endif
         }
     }
-#else
-    // new GF group and bit allocation is done for: 1. I_Slice, 2: base layer which is not coming after an I
-    uint8_t is_new_gf_group = (ppcs_ptr->slice_type == I_SLICE ||
-                               (ppcs_ptr->slice_type != I_SLICE &&
-                                   ppcs_ptr->temporal_layer_index == 0 &&
-                                   ppcs_ptr->child_pcs->ref_slice_type_array[0][0] != I_SLICE))
-        ? 1
-        : 0;
-    if (is_new_gf_group) {
-        for (uint8_t frame_idx = 0;
-             frame_idx < (int32_t)ppcs_ptr->tpl_group_size - ppcs_ptr->tpl_trailing_frame_count;
-             frame_idx++) {
-            uint8_t gf_group_index = ppcs_ptr->slice_type == I_SLICE ? frame_idx : frame_idx + 1;
-            ppcs_ptr->tpl_group[frame_idx]->gf_group_index = gf_group_index;
-            ppcs_ptr->tpl_group[frame_idx]->update_type    = gf_group->update_type[gf_group_index];
-            ppcs_ptr->tpl_group[frame_idx]->layer_depth    = gf_group->layer_depth[gf_group_index];
-            ppcs_ptr->tpl_group[frame_idx]->arf_boost      = gf_group->arf_boost[gf_group_index];
-            ppcs_ptr->tpl_group[frame_idx]->bit_allocation =
-                gf_group->bit_allocation[gf_group_index];
-        }
-    }
-#endif
 }
 /************************************************************************************************
 * Store the required parameters from rc, twopass and gf_group structures to other structures
 *************************************************************************************************/
-#if FTR_VBR_MT
 static void store_param(PictureParentControlSet *ppcs_ptr,
     RateControlIntervalParamContext *rate_control_param_ptr) {
-#else
-void static store_param(PictureParentControlSet *ppcs_ptr) {
-#endif
+
     store_rc_param(ppcs_ptr);
-#if FTR_VBR_MT
     store_two_pass_param(ppcs_ptr, rate_control_param_ptr);
-#else
-    store_two_pass_param(ppcs_ptr);
-#endif
     store_gf_group_param(ppcs_ptr);
 }
 #endif
@@ -7662,11 +7568,7 @@ void *rate_control_kernel(void *input_ptr) {
                     av1_rc_init(scs_ptr);
                 }
 #if FTR_VBR_MT
-#if FTR_VBR_MT
                 restore_param(pcs_ptr->parent_pcs_ptr, rate_control_param_ptr);
-#else
-                restore_param(pcs_ptr->parent_pcs_ptr);
-#endif
 #endif
 
                 svt_av1_get_second_pass_params(pcs_ptr->parent_pcs_ptr);
@@ -7676,11 +7578,7 @@ void *rate_control_kernel(void *input_ptr) {
                                     pcs_ptr->parent_pcs_ptr->av1_cm->frm_size.frame_width,
                                     pcs_ptr->parent_pcs_ptr->av1_cm->frm_size.frame_height);
 #if FTR_VBR_MT
-#if FTR_VBR_MT
                 store_param(pcs_ptr->parent_pcs_ptr, rate_control_param_ptr);
-#else
-                store_param(pcs_ptr->parent_pcs_ptr);
-#endif
 #endif
             } else if (scs_ptr->static_config.rate_control_mode) {
                 pcs_ptr->parent_pcs_ptr->intra_selected_org_qp = 0;

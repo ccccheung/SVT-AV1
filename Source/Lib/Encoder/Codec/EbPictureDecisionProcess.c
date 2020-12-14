@@ -4074,7 +4074,9 @@ void send_picture_out(
 
 }
 #if FTR_VBR_MT
-// Store the pcs pointers in the gf group, set the gf_interval and gf_update_due
+/***************************************************************************************************
+* Store the pcs pointers in the gf group, set the gf_interval and gf_update_due
+***************************************************************************************************/
 void store_gf_group(
     PictureParentControlSet *pcs,
     PictureDecisionContext  *ctx,

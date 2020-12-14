@@ -2307,12 +2307,6 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
     GF_GROUP *const gf_group = &encode_context_ptr->gf_group;
     CurrentFrame *const current_frame = &pcs_ptr->av1_cm->current_frame;
     current_frame->frame_number            = (int)pcs_ptr->picture_number;
-#if 0//FTR_VBR_MT
-    if (scs_ptr->lap_enabled || use_input_stat(scs_ptr)) {
-        twopass->stats_in = scs_ptr->twopass.stats_buf_ctx->stats_in_start + pcs_ptr->stats_in_offset;
-      //  twopass->stats_buf_ctx->stats_in_end = scs_ptr->twopass.stats_buf_ctx->stats_in_start + pcs_ptr->stats_in_end_offset;
-    }
-#endif
 #if 0//FTR_VBR_MT_LOG
     SVT_LOG(
         "enter get_second_pass_params: "
@@ -2422,12 +2416,7 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
                      encode_context_ptr->gf_cfg.lag_in_frames - 7/*oxcf->arnr_max_frames*/ / 2)
             : MAX_GF_LENGTH_LAP;
 #if FTR_VBR_MT
-#if FTR_VBR_MT
     rc->gf_interval = (pcs_ptr->slice_type == I_SLICE) ? pcs_ptr->gf_interval : pcs_ptr->gf_interval + 1;
-#else
-    rc->cur_gf_index = 0;
-    rc->gf_intervals[rc->cur_gf_index] = (pcs_ptr->slice_type == I_SLICE) ? pcs_ptr->gf_interval : pcs_ptr->gf_interval + 1;
-#endif
 #else
     if (rc->intervals_till_gf_calculate_due == 0)
         impose_gf_length(pcs_ptr, MAX_NUM_GF_INTERVALS);
@@ -2723,17 +2712,13 @@ void svt_av1_twopass_postencode_update(PictureParentControlSet *ppcs_ptr) {
   // or group of frames.
 #if FTR_VBR_MT
   rc->vbr_bits_off_target += ppcs_ptr->base_frame_target - ppcs_ptr->projected_frame_size;
-#else
-  rc->vbr_bits_off_target += rc->base_frame_target - rc->projected_frame_size;
-#endif
-#if !FTR_VBR_MT
-  twopass->bits_left = AOMMAX(twopass->bits_left - bits_used, 0);
-#endif
   // Target vs actual bits for this arf group.
-#if FTR_VBR_MT
   twopass->rolling_arf_group_target_bits += ppcs_ptr->this_frame_target;
   twopass->rolling_arf_group_actual_bits += ppcs_ptr->projected_frame_size;
 #else
+  rc->vbr_bits_off_target += rc->base_frame_target - rc->projected_frame_size;
+  twopass->bits_left = AOMMAX(twopass->bits_left - bits_used, 0);
+  // Target vs actual bits for this arf group.
   twopass->rolling_arf_group_target_bits += rc->this_frame_target;
   twopass->rolling_arf_group_actual_bits += rc->projected_frame_size;
 #endif
