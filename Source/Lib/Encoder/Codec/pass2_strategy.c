@@ -964,7 +964,14 @@ static INLINE void set_baseline_gf_interval(PictureParentControlSet *pcs_ptr, in
       rc->baseline_gf_interval = arf_position - rc->source_alt_ref_pending;
     }
   } else {
-    rc->baseline_gf_interval = arf_position - rc->source_alt_ref_pending;
+#if FTR_VBR_MT_MINIGOP_FIX
+      if (frame_is_intra_only(pcs_ptr) && pcs_ptr->idr_flag)
+          rc->baseline_gf_interval = arf_position - rc->source_alt_ref_pending - 1;
+      else
+        rc->baseline_gf_interval = arf_position - rc->source_alt_ref_pending;
+#else
+      rc->baseline_gf_interval = arf_position - rc->source_alt_ref_pending;
+#endif
   }
 }
 
@@ -1350,7 +1357,11 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
 
   // Should we use the alternate reference frame.
   if (use_alt_ref) {
-    rc->source_alt_ref_pending = 1;
+#if FTR_VBR_MT_MINIGOP_FIX
+      rc->source_alt_ref_pending = 0;
+#else
+      rc->source_alt_ref_pending = 1;
+#endif
     gf_group->max_layer_depth_allowed = gf_cfg->gf_max_pyr_height;
     // Get from actual minigop size in PD
 #if FTR_VBR_MT
@@ -1387,7 +1398,7 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
             scs_ptr->lap_enabled ? &rc->num_stats_used_for_gfu_boost : NULL,
             scs_ptr->lap_enabled ? &rc->num_stats_required_for_gfu_boost : NULL));
   }
-
+#if !FTR_VBR_MT_MINIGOP_FIX
   // rc->gf_intervals assumes the usage of alt_ref, therefore adding one overlay
   // frame to the next gf. If no alt_ref is used, should substract 1 frame from
   // the next gf group.
@@ -1403,7 +1414,7 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
     rc->gf_intervals[rc->cur_gf_index]--;
   }
 #endif
-
+#endif
 #define LAST_ALR_BOOST_FACTOR 0.2f
   rc->arf_boost_factor = 1.0;
   if (rc->source_alt_ref_pending && !is_lossless_requested(rc_cfg)) {

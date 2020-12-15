@@ -6652,9 +6652,10 @@ static void update_alt_ref_frame_stats(PictureParentControlSet *ppcs_ptr) {
 
     // Mark the alt ref as done (setting to 0 means no further alt refs pending).
     rc->source_alt_ref_pending = 0;
-
+#if !FTR_VBR_MT_MINIGOP_FIX
     // Set the alternate reference frame active flag
     rc->source_alt_ref_active = 1;
+#endif
 }
 
 static void update_golden_frame_stats(PictureParentControlSet *ppcs_ptr) {
@@ -6965,7 +6966,7 @@ static void av1_set_target_rate(PictureControlSet *pcs_ptr, int width, int heigh
 #if FTR_VBR_MT_LOG
     SVT_LOG("POC:%lld\tbase_target:%d\ttarget:%d\n",
         pcs_ptr->picture_number,
-        rc->base_frame_target,
+        pcs_ptr->parent_pcs_ptr->base_frame_target,
         target_rate);
 #endif
 }
@@ -7332,6 +7333,7 @@ static void restore_gf_group_param(PictureParentControlSet *ppcs_ptr) {
     EncodeContext *     encode_context_ptr = scs_ptr->encode_context_ptr;
     GF_GROUP *const     gf_group = &encode_context_ptr->gf_group;
     gf_group->index = ppcs_ptr->gf_group_index;
+    gf_group->size = ppcs_ptr->gf_group_size;
     gf_group->update_type[gf_group->index] = ppcs_ptr->update_type;
     gf_group->layer_depth[gf_group->index] = ppcs_ptr->layer_depth;
     gf_group->arf_boost[gf_group->index] = ppcs_ptr->arf_boost;
@@ -7415,6 +7417,7 @@ static void store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
         for (uint8_t frame_idx = 0; frame_idx < (int32_t)ppcs_ptr->gf_interval; frame_idx++) {
             uint8_t gf_group_index = ppcs_ptr->slice_type == I_SLICE ? frame_idx : frame_idx + 1;
             ppcs_ptr->gf_group[frame_idx]->gf_group_index = gf_group_index;
+            ppcs_ptr->gf_group[frame_idx]->gf_group_size = gf_group->size;
             ppcs_ptr->gf_group[frame_idx]->update_type    = gf_group->update_type[gf_group_index];
             ppcs_ptr->gf_group[frame_idx]->layer_depth    = gf_group->layer_depth[gf_group_index];
             ppcs_ptr->gf_group[frame_idx]->arf_boost      = gf_group->arf_boost[gf_group_index];

@@ -924,6 +924,7 @@ typedef struct PictureParentControlSet {
     int                             update_type;
     int                             layer_depth;
     int                             arf_boost;
+    int                             gf_group_size;
     //RATE_CONTROL parameters store in PCS
     int                             base_frame_target; // A baseline frame target before adjustment.
     int                             this_frame_target; // Actual frame target after rc adjustment.
