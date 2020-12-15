@@ -1259,11 +1259,15 @@ static void define_gf_group(PictureParentControlSet *pcs_ptr, FIRSTPASS_STATS *t
   //const int active_min_gf_interval = rc->min_gf_interval;
   const int active_max_gf_interval =
       AOMMIN(rc->max_gf_interval, max_gop_length);
+#if FTR_VBR_MT_MINIGOP_FIX
+  i = 0;
+#else
   // If the first frame is not key frame, we start from i=1
   if (is_intra_only)
       i = 0;
   else
       i = 1;
+#endif
   // get the determined gf group length from rc->gf_intervals
 #if FTR_VBR_MT
   while (i < rc->gf_interval)
@@ -2418,7 +2422,11 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
                      encode_context_ptr->gf_cfg.lag_in_frames - 7/*oxcf->arnr_max_frames*/ / 2)
             : MAX_GF_LENGTH_LAP;
 #if FTR_VBR_MT
+#if FTR_VBR_MT_MINIGOP_FIX
+    rc->gf_interval = pcs_ptr->gf_interval;
+#else
     rc->gf_interval = (pcs_ptr->slice_type == I_SLICE) ? pcs_ptr->gf_interval : pcs_ptr->gf_interval + 1;
+#endif
 #else
     if (rc->intervals_till_gf_calculate_due == 0)
         impose_gf_length(pcs_ptr, MAX_NUM_GF_INTERVALS);
@@ -2439,11 +2447,13 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
     rc->frames_till_gf_update_due = rc->baseline_gf_interval;
 #endif
     assert(pcs_ptr->gf_group_index == 0);
+#if !FTR_VBR_MT_MINIGOP_FIX
     // This is added for the first frame in minigop when it is not KEY_FRAME
     if (pcs_ptr->frm_hdr.frame_type != KEY_FRAME) {
         gf_group->index++;
         pcs_ptr->gf_group_index = gf_group->index;
     }
+#endif
 #if FTR_VBR_MT
     setup_target_rate(pcs_ptr);
 #endif
