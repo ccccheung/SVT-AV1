@@ -2338,8 +2338,13 @@ void copy_api_from_app(
     scs_ptr->static_config.under_shoot_pct     = ((EbSvtAv1EncConfiguration*)config_struct)->under_shoot_pct;
     scs_ptr->static_config.over_shoot_pct      = ((EbSvtAv1EncConfiguration*)config_struct)->over_shoot_pct;
     scs_ptr->static_config.recode_loop         = ((EbSvtAv1EncConfiguration*)config_struct)->recode_loop;
+#if FTR_VBR_MT
+    if (scs_ptr->static_config.rate_control_mode == 1 && !use_output_stat(scs_ptr) && !use_input_stat(scs_ptr))
+        scs_ptr->lap_enabled = 1;
+#else
     if (scs_ptr->static_config.rate_control_mode && !use_output_stat(scs_ptr) && !use_input_stat(scs_ptr))
-        scs_ptr->lap_enabled = 1; //turned off temporarily
+        scs_ptr->lap_enabled = 0; //turned off temporarily
+#endif
     else
         scs_ptr->lap_enabled = 0;
     //Segmentation
