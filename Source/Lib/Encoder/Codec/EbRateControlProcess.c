@@ -7417,7 +7417,7 @@ static void store_gf_group_param(PictureParentControlSet *ppcs_ptr) {
         for (uint8_t frame_idx = 0; frame_idx < (int32_t)ppcs_ptr->gf_interval; frame_idx++) {
             uint8_t gf_group_index = ppcs_ptr->slice_type == I_SLICE ? frame_idx : frame_idx + 1;
             ppcs_ptr->gf_group[frame_idx]->gf_group_index = gf_group_index;
-            ppcs_ptr->gf_group[frame_idx]->gf_group_size = gf_group->size;
+            ppcs_ptr->gf_group[frame_idx]->gf_group_size = MAX(gf_group->size, ppcs_ptr->gf_interval);
             ppcs_ptr->gf_group[frame_idx]->update_type    = gf_group->update_type[gf_group_index];
             ppcs_ptr->gf_group[frame_idx]->layer_depth    = gf_group->layer_depth[gf_group_index];
             ppcs_ptr->gf_group[frame_idx]->arf_boost      = gf_group->arf_boost[gf_group_index];

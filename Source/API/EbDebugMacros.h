@@ -52,7 +52,7 @@ extern "C" {
 #define FTR_VBR_MT          1 // move base_frame_target,this_frame_target and projected_frame_size to PCS
 #endif
 #define FTR_VBR_MT_REMOVE_DEC_ORDER 1 // Remove the decode order constraint
-#define FTR_VBR_MT_LOG         0
+#define FTR_VBR_MT_LOG         1
 #endif
 //FOR DEBUGGING - Do not remove
 #define NO_ENCDEC               0 // bypass encDec to test cmpliance of MD. complained achieved when skip_flag is OFF. Port sample code from VCI-SW_AV1_Candidate1 branch

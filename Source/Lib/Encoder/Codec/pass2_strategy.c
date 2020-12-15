@@ -1102,8 +1102,12 @@ static int construct_multi_layer_gf_structure(
     // P pictures. In the else, we handle the P-case manually this logic has to move to picture decision
     if (gf_interval >= (max_gf_interval>>1))
     {
+#if FTR_VBR_MT_MINIGOP_FIX
+        const int use_altref = 1;
+#else
         // ALTREF.
         const int use_altref = gf_group->max_layer_depth_allowed > 0;
+#endif
         if (use_altref) {
             gf_group->update_type[frame_index] = ARF_UPDATE;
 #if !FTR_VBR_MT
@@ -2596,7 +2600,11 @@ void set_rc_param(SequenceControlSet *scs_ptr) {
     encode_context_ptr->rc_cfg.maximum_buffer_size_ms = is_vbr ? 240000 : 6000;//cfg->rc_buf_sz;
     encode_context_ptr->rc_cfg.starting_buffer_level_ms = is_vbr ? 60000 : 4000;//cfg->rc_buf_initial_sz;
     encode_context_ptr->rc_cfg.optimal_buffer_level_ms = is_vbr ? 60000 : 5000;//cfg->rc_buf_optimal_sz;
+#if FTR_VBR_MT_MINIGOP_FIX
+    encode_context_ptr->gf_cfg.lag_in_frames = MAX(25, (1 << scs_ptr->static_config.hierarchical_levels) + SCD_LAD + 1);
+#else
     encode_context_ptr->gf_cfg.lag_in_frames = 25;//hack scs_ptr->static_config.look_ahead_distance + 1;
+#endif
     encode_context_ptr->gf_cfg.gf_min_pyr_height = scs_ptr->static_config.hierarchical_levels;
     encode_context_ptr->gf_cfg.gf_max_pyr_height = scs_ptr->static_config.hierarchical_levels;
     encode_context_ptr->gf_cfg.min_gf_interval = 1 << scs_ptr->static_config.hierarchical_levels;
