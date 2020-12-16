@@ -2025,7 +2025,9 @@ static uint32_t compute_default_look_ahead(
         lad = config->enable_tpl_la == 1 ? TPL_LAD : (2 << config->hierarchical_levels)+1;
     else
         lad = config->intra_period_length;
-
+#if FTR_VBR_MT
+    lad = lad > MAX_LAD ? MAX_LAD : lad; // clip to max allowed lad
+#endif
     return lad;
 }
 
@@ -2150,9 +2152,16 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
         scs_ptr->enable_pic_mgr_dec_order = 0;
     // Enforce encoding frame in decode order
     // Wait for feedback from PKT
+#if FTR_VBR_MT_REMOVE_DEC_ORDER
+    if (scs_ptr->static_config.logical_processors == 1 && // LP1
+        ((scs_ptr->in_loop_me == 1 && // inloop ME
+        scs_ptr->static_config.enable_tpl_la) || 
+        (use_input_stat(scs_ptr) || scs_ptr->lap_enabled)))
+#else
     if (scs_ptr->static_config.logical_processors == 1 && // LP1
         scs_ptr->in_loop_me == 1 && // inloop ME
         scs_ptr->static_config.enable_tpl_la)
+#endif
         scs_ptr->enable_dec_order = 1;
     else
         scs_ptr->enable_dec_order = 0;
@@ -2316,6 +2325,12 @@ void copy_api_from_app(
     // Rate Control
     scs_ptr->static_config.scene_change_detection = ((EbSvtAv1EncConfiguration*)config_struct)->scene_change_detection;
     scs_ptr->static_config.rate_control_mode = ((EbSvtAv1EncConfiguration*)config_struct)->rate_control_mode;
+#if FTR_VBR_MT
+    if (scs_ptr->static_config.rate_control_mode == 2) {
+        scs_ptr->static_config.rate_control_mode = 1;
+        SVT_WARN("The CVBR rate control mode (mode 2) is not supported in this branch. RC mode 1 is used instead.\n");
+    }
+#endif
     scs_ptr->static_config.look_ahead_distance = ((EbSvtAv1EncConfiguration*)config_struct)->look_ahead_distance;
     scs_ptr->static_config.frame_rate = ((EbSvtAv1EncConfiguration*)config_struct)->frame_rate;
     scs_ptr->static_config.frame_rate_denominator = ((EbSvtAv1EncConfiguration*)config_struct)->frame_rate_denominator;
@@ -2339,7 +2354,7 @@ void copy_api_from_app(
     scs_ptr->static_config.over_shoot_pct      = ((EbSvtAv1EncConfiguration*)config_struct)->over_shoot_pct;
     scs_ptr->static_config.recode_loop         = ((EbSvtAv1EncConfiguration*)config_struct)->recode_loop;
 #if FTR_VBR_MT
-    if (scs_ptr->static_config.rate_control_mode == 1 && !use_output_stat(scs_ptr) && !use_input_stat(scs_ptr))
+    if (scs_ptr->static_config.rate_control_mode && !use_output_stat(scs_ptr) && !use_input_stat(scs_ptr) && scs_ptr->static_config.hierarchical_levels > 1)
         scs_ptr->lap_enabled = 1;
 #else
     if (scs_ptr->static_config.rate_control_mode && !use_output_stat(scs_ptr) && !use_input_stat(scs_ptr))
@@ -2404,8 +2419,14 @@ void copy_api_from_app(
     if (scs_ptr->static_config.intra_period_length == -2)
         scs_ptr->intra_period_length = scs_ptr->static_config.intra_period_length = compute_default_intra_period(scs_ptr);
     else if (scs_ptr->static_config.intra_period_length == -1 && (use_input_stat(scs_ptr) || use_output_stat(scs_ptr) || scs_ptr->lap_enabled))
-
-        scs_ptr->intra_period_length = (MAX_NUM_GF_INTERVALS-1)* (1 << (scs_ptr->static_config.hierarchical_levels));
+#if FTR_VBR_MT
+    {
+        scs_ptr->intra_period_length = (scs_ptr->frame_rate >> 16)* MAX_NUM_SEC_INTRA;
+        SVT_LOG("SVT [Warning]: force Intra period to be scs_ptr->intra_period_length for perf/quality tradeoff\n", scs_ptr->intra_period_length);
+    }
+#else
+        scs_ptr->intra_period_length = (MAX_NUM_GF_INTERVALS - 1)* (1 << (scs_ptr->static_config.hierarchical_levels));
+#endif
     if (scs_ptr->static_config.look_ahead_distance == (uint32_t)~0)
         scs_ptr->static_config.look_ahead_distance = compute_default_look_ahead(&scs_ptr->static_config);
     else
@@ -2560,6 +2581,7 @@ static EbErrorType verify_settings(
         SVT_LOG("Error instance %u: Hierarchical Levels supported [0-5]\n", channel_number + 1);
         return_error = EB_ErrorBadParameter;
     }
+
     if ((config->intra_period_length < -2 || config->intra_period_length > 2*((1 << 30) - 1)) && config->rate_control_mode == 0) {
         SVT_LOG("Error Instance %u: The intra period must be [-2, 2^31-2]  \n", channel_number + 1);
         return_error = EB_ErrorBadParameter;

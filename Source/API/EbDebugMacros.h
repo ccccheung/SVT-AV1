@@ -37,20 +37,11 @@ extern "C" {
 #ifndef NON_AVX512_SUPPORT
 #define NON_AVX512_SUPPORT
 #endif
-#define FTR_VBR_MT              1
+#define FTR_VBR_MT              1 // Add supports for RC in multithreaded mode.
+                                  // Store/Restore the stat ptrs, gf_group, rate_control in PCS
+                                  // Move base_frame_target,this_frame_target and projected_frame_size to PCS
 #if FTR_VBR_MT
 #define FTR_VBR_MT_MINIGOP_FIX  1 // Fix the non 5L minigops
-#if 0
-#define FTR_VBR_MT          1 // Storing/Restoring the stat ptrs in PCS
-#define FTR_VBR_MT          1 // Storing/Restoring gf_group in PCS
-#define FTR_VBR_MT          1 // Storing/Restoring rate_control in PCS
-#define FTR_VBR_MT          1 // Replacing gf_interval calculation
-#define FTR_VBR_MT          1 // Restore values from PCS to RC, fix kf_group_bit
-#define FTR_VBR_MT          1 // Move kf_group_bit and kf_group_error_left to rate_control_param_ptr
-#define FTR_VBR_MT          1 // Remove intervals_till_gf_calculate_due, cur_gf_index and replace gf_intervals[] with gf_interval
-#define FTR_VBR_MT          1 // Remove arf_src_offset, cur_frame_idx and q_val
-#define FTR_VBR_MT          1 // move base_frame_target,this_frame_target and projected_frame_size to PCS
-#endif
 #define FTR_VBR_MT_REMOVE_DEC_ORDER 1 // Remove the decode order constraint
 #define FTR_VBR_MT_LOG         0
 #endif
