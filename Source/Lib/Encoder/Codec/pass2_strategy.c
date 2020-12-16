@@ -1102,12 +1102,8 @@ static int construct_multi_layer_gf_structure(
     // P pictures. In the else, we handle the P-case manually this logic has to move to picture decision
     if (gf_interval >= (max_gf_interval>>1))
     {
-#if FTR_VBR_MT_MINIGOP_FIX
-        const int use_altref = 1;
-#else
         // ALTREF.
         const int use_altref = gf_group->max_layer_depth_allowed > 0;
-#endif
         if (use_altref) {
             gf_group->update_type[frame_index] = ARF_UPDATE;
 #if !FTR_VBR_MT
@@ -1120,6 +1116,16 @@ static int construct_multi_layer_gf_structure(
             gf_group->max_layer_depth = 1;
             ++frame_index;
         }
+#if FTR_VBR_MT_MINIGOP_FIX
+        else {
+            gf_group->update_type[frame_index] = INTNL_ARF_UPDATE;
+            gf_group->frame_disp_idx[frame_index] = gf_interval;
+            gf_group->layer_depth[frame_index] = 1;
+            gf_group->arf_boost[frame_index] = rc->gfu_boost;
+            gf_group->max_layer_depth = 1;
+            ++frame_index;
+        }
+#endif
         // Rest of the frames.
         set_multi_layer_params(twopass, gf_group, rc, frame_info, 0, gf_interval,
 #if FTR_VBR_MT
