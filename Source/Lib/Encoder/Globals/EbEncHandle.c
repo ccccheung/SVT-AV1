@@ -2427,7 +2427,7 @@ void copy_api_from_app(
 #if FTR_VBR_MT
     {
         scs_ptr->intra_period_length = (scs_ptr->frame_rate >> 16)* MAX_NUM_SEC_INTRA;
-        SVT_LOG("SVT [Warning]: force Intra period to be scs_ptr->intra_period_length for perf/quality tradeoff\n", scs_ptr->intra_period_length);
+        SVT_LOG("SVT [Warning]: force Intra period to be %d for perf/quality tradeoff\n", scs_ptr->intra_period_length);
     }
 #else
         scs_ptr->intra_period_length = (MAX_NUM_GF_INTERVALS - 1)* (1 << (scs_ptr->static_config.hierarchical_levels));

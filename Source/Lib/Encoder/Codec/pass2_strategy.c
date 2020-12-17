@@ -24,9 +24,6 @@
 #include "firstpass.h"
 #include "EbSequenceControlSet.h"
 #include "EbEntropyCoding.h"
-#if FTR_VBR_MT_LOG
-#include "EbLog.h"
-#endif
 //#define INT_MAX 0x7fffffff
 
 #define DEFAULT_KF_BOOST 2300
@@ -721,13 +718,6 @@ static int64_t calculate_total_gf_group_bits(PictureParentControlSet *pcs_ptr,
   // Clip based on user supplied data rate variability limit.
   if (total_group_bits > (int64_t)max_bits * rc->baseline_gf_interval)
     total_group_bits = (int64_t)max_bits * rc->baseline_gf_interval;
-#if FTR_VBR_MT_LOG
-  SVT_LOG("POC%lld\tkf_group_bits:%d\tgf_group_err:%.f\tkf_group_error_left:%d\ttotal_group_bits:%d\n", pcs_ptr->picture_number,
-      twopass->kf_group_bits,
-      gf_group_err,
-      twopass->kf_group_error_left,
-      total_group_bits);
-#endif
 #if FTR_VBR_MT
   twopass->kf_group_bits = AOMMAX(twopass->kf_group_bits - total_group_bits, 0);
 #endif
@@ -2167,13 +2157,6 @@ static void find_next_key_frame(PictureParentControlSet *pcs_ptr, FIRSTPASS_STAT
         AOMMIN(rc->frames_to_key, frames_to_key_clipped) - 1, rc->kf_boost,
         AOMMIN(twopass->kf_group_bits, kf_group_bits_clipped));
 
-#if FTR_VBR_MT_LOG
-    SVT_LOG("POC%lld\tkf_group_bits:%d\kf_bits:%d\tkf_boost:%d\tkf_zeromotion_pct:%d\n", pcs_ptr->picture_number,
-        twopass->kf_group_bits,
-        kf_bits,
-        rc->kf_boost,
-        twopass->kf_zeromotion_pct);
-#endif
     twopass->kf_group_bits -= kf_bits;
 
     // Save the bits to spend on the key frame.
@@ -2334,20 +2317,7 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
     GF_GROUP *const gf_group = &encode_context_ptr->gf_group;
     CurrentFrame *const current_frame = &pcs_ptr->av1_cm->current_frame;
     current_frame->frame_number            = (int)pcs_ptr->picture_number;
-#if 0//FTR_VBR_MT_LOG
-    SVT_LOG(
-        "enter get_second_pass_params: "
-        "POC:%lld\tDCO:%lld\tstat_in:%.0f\tstats_in_start:%.0f\tstats_in_end:%.0f\tstats_in_buf_"
-        "end:%.0f\ttotal_left_stats:%.0f\ttotal_total_stats:%.0f\n",
-        pcs_ptr->picture_number,
-        pcs_ptr->decode_order,
-        twopass->stats_in->frame,
-        twopass->stats_buf_ctx->stats_in_start->frame,
-        (twopass->stats_buf_ctx->stats_in_end-1)->frame,
-        twopass->stats_buf_ctx->stats_in_buf_end->frame,
-        twopass->stats_buf_ctx->total_left_stats->frame,
-        twopass->stats_buf_ctx->total_stats->frame);
-#endif
+
     EncodeFrameParams temp_frame_params, *frame_params = &temp_frame_params;
     pcs_ptr->gf_group_index = gf_group->index;
     if (/*is_stat_consumption_stage(cpi) &&*/ !twopass->stats_in)
@@ -2452,13 +2422,7 @@ void svt_av1_get_second_pass_params(PictureParentControlSet *pcs_ptr) {
     if (rc->intervals_till_gf_calculate_due == 0)
         impose_gf_length(pcs_ptr, MAX_NUM_GF_INTERVALS);
 #endif
-#if 0//FTR_VBR_MT_LOG
-#if FTR_VBR_MT
-        SVT_LOG("In2: poc:%d\tGF_INT:%d\n", pcs_ptr->picture_number,  rc->gf_interval);
-#else
-        SVT_LOG("In2: poc:%d\tGF_INT:%d\n", pcs_ptr->picture_number,  rc->gf_intervals[rc->cur_gf_index]);
-#endif
-#endif
+
 #if FTR_VBR_MT
     define_gf_group(pcs_ptr, &this_frame, frame_params, max_gop_length);
 #else

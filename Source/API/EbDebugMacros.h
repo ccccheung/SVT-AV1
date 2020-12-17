@@ -43,7 +43,6 @@ extern "C" {
 #if FTR_VBR_MT
 #define FTR_VBR_MT_MINIGOP_FIX  1 // Fix the non 5L minigops
 #define FTR_VBR_MT_REMOVE_DEC_ORDER 1 // Remove the decode order constraint
-#define FTR_VBR_MT_LOG         0
 #endif
 #define TUNE_DEFAULT_RECODE_LOOP 1 // default recode-loop setting, reenc2 for M0~5 and reenc1 for M6~8
 //FOR DEBUGGING - Do not remove

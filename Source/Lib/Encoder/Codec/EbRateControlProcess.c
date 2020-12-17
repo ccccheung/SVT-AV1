@@ -6963,12 +6963,6 @@ static void av1_set_target_rate(PictureControlSet *pcs_ptr, int width, int heigh
     if (rc_cfg->mode == AOM_VBR || rc_cfg->mode == AOM_CQ)
         vbr_rate_correction(pcs_ptr, &target_rate);
     av1_rc_set_frame_target(pcs_ptr, target_rate, width, height);
-#if FTR_VBR_MT_LOG
-    SVT_LOG("POC:%lld\tbase_target:%d\ttarget:%d\n",
-        pcs_ptr->picture_number,
-        pcs_ptr->parent_pcs_ptr->base_frame_target,
-        target_rate);
-#endif
 }
 
 static double av1_get_compression_ratio(PictureParentControlSet *ppcs_ptr,
@@ -7365,18 +7359,6 @@ static void restore_param(PictureParentControlSet *ppcs_ptr,
                   ppcs_ptr->last_idr_picture + 1));
     }
     ppcs_ptr->frames_to_key = key_max - ppcs_ptr->frames_since_key;
-#if 0//FTR_VBR_MT_LOG
-    RATE_CONTROL *      rc = &encode_context_ptr->rc;
-    SVT_LOG(
-        "store_rc_param: "
-        "POC:%lld\tkey_max:%d\tpps_frames_to_key:%d\trc_frames_to_key:%d\tpps_frames_since_key:%d\trc_frames_since_key:%d\n",
-        ppcs_ptr->picture_number,
-        key_max,
-        ppcs_ptr->frames_to_key,
-        rc->frames_to_key,
-        ppcs_ptr->frames_since_key,
-        rc->frames_since_key);
-#endif
     restore_gf_group_param(ppcs_ptr);
 }
 /************************************************************************************************
