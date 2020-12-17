@@ -45,6 +45,7 @@ extern "C" {
 #define FTR_VBR_MT_REMOVE_DEC_ORDER 1 // Remove the decode order constraint
 #define FTR_VBR_MT_LOG         0
 #endif
+#define TUNE_DEFAULT_RECODE_LOOP 1 // default recode-loop setting, reenc2 for M0~5 and reenc1 for M6~8
 //FOR DEBUGGING - Do not remove
 #define NO_ENCDEC               0 // bypass encDec to test cmpliance of MD. complained achieved when skip_flag is OFF. Port sample code from VCI-SW_AV1_Candidate1 branch
 #define DEBUG_TPL               0 // Prints to debug TPL
