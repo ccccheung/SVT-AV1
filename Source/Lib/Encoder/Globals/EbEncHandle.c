@@ -2155,7 +2155,7 @@ void set_param_based_on_input(SequenceControlSet *scs_ptr)
 #if FTR_VBR_MT_REMOVE_DEC_ORDER
     if (scs_ptr->static_config.logical_processors == 1 && // LP1
         ((scs_ptr->in_loop_me == 1 && // inloop ME
-        scs_ptr->static_config.enable_tpl_la) || 
+        scs_ptr->static_config.enable_tpl_la) ||
         (use_input_stat(scs_ptr) || scs_ptr->lap_enabled)))
 #else
     if (scs_ptr->static_config.logical_processors == 1 && // LP1
