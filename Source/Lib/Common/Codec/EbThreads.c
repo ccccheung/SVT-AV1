@@ -359,6 +359,8 @@ void atomic_set_u32(AtomicVarU32 *var, uint32_t in) {
     var->obj = in;
     svt_release_mutex(var->mutex);
 }
+
+#if FIX_DDL
 /*
     create condition variable
 
@@ -368,7 +370,8 @@ void atomic_set_u32(AtomicVarU32 *var, uint32_t in) {
     a lock(mutex) and enter the sleeping state.
     it could be seen as a combined: wait and release mutex
 */
-void svt_create_cond_var(CondVar *cond_var) {
+void svt_create_cond_var(CondVar *cond_var)
+{
     cond_var->val = 0;
 #ifdef _WIN32
     InitializeCriticalSection(&cond_var->cs);
@@ -381,7 +384,8 @@ void svt_create_cond_var(CondVar *cond_var) {
 /*
     set a  condition variable to the new value
 */
-void svt_set_cond_var(CondVar *cond_var, int32_t newval) {
+void svt_set_cond_var(CondVar *cond_var, int32_t newval)
+{
 #ifdef _WIN32
     EnterCriticalSection(&cond_var->cs);
     cond_var->val = newval;
@@ -399,16 +403,21 @@ void svt_set_cond_var(CondVar *cond_var, int32_t newval) {
     different than input
 */
 
-void svt_wait_cond_var(CondVar *cond_var, int32_t input) {
+void svt_wait_cond_var(CondVar *cond_var, int32_t input)
+{
+
 #ifdef _WIN32
 
     EnterCriticalSection(&cond_var->cs);
-    while (cond_var->val == input) SleepConditionVariableCS(&cond_var->cv, &cond_var->cs, INFINITE);
+    while (cond_var->val == input)
+        SleepConditionVariableCS(&cond_var->cv, &cond_var->cs, INFINITE);
     LeaveCriticalSection(&cond_var->cs);
 
 #else
     pthread_mutex_lock(&cond_var->m_mutex);
-    while (cond_var->val == input) pthread_cond_wait(&cond_var->m_cond, &cond_var->m_mutex);
+    while (cond_var->val == input)
+        pthread_cond_wait(&cond_var->m_cond, &cond_var->m_mutex);
     pthread_mutex_unlock(&cond_var->m_mutex);
 #endif
 }
+#endif
